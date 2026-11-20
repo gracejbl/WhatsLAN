@@ -1,0 +1,5 @@
+Dossier de reference visuelle.
+- NOTES_CAPTURES_REFERENCE.md : description de l'apparence de WhatsApp Desktop (a lire avant la Phase 0).
+- Captures d'ecran (OPTIONNEL) : ne mets ici que des images SANS informations personnelles
+  (noms, numeros, messages, photos floutes ou recadrees). Elles servent uniquement a imiter
+  l'apparence. Aucun contenu des captures ne doit etre recopie dans le code (voir AGENTS.md).
