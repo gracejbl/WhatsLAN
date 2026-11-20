@@ -1,0 +1,46 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Palette Thème Sombre fidèle aux captures de référence WhatsApp Desktop -->
+    <SolidColorBrush x:Key="AppBackground" Color="#161717"/>
+    <SolidColorBrush x:Key="PanelBackground" Color="#161717"/>
+    <SolidColorBrush x:Key="PanelHeader" Color="#202C33"/>
+    <SolidColorBrush x:Key="ChatBackground" Color="#0E0F0F"/>
+    
+    <SolidColorBrush x:Key="BubbleOut" Color="#005C4B"/>
+    <SolidColorBrush x:Key="BubbleIn" Color="#242626"/>
+    
+    <SolidColorBrush x:Key="TextPrimary" Color="#E9EDEF"/>
+    <SolidColorBrush x:Key="TextSecondary" Color="#8696A0"/>
+    <SolidColorBrush x:Key="Accent" Color="#21C063"/>
+    <SolidColorBrush x:Key="AccentLight" Color="#21C063"/>
+    <SolidColorBrush x:Key="TickBlue" Color="#53BDEB"/>
+    <SolidColorBrush x:Key="Divider" Color="#222D34"/>
+    
+    <SolidColorBrush x:Key="RowHover" Color="#202C33"/>
+    <SolidColorBrush x:Key="RowSelected" Color="#2A2C2C"/>
+    
+    <SolidColorBrush x:Key="InputBar" Color="#161717"/>
+    <SolidColorBrush x:Key="InputField" Color="#242626"/>
+    <SolidColorBrush x:Key="SearchField" Color="#242626"/>
+    
+    <SolidColorBrush x:Key="Danger" Color="#F15C6D"/>
+    <SolidColorBrush x:Key="LinkBlue" Color="#53BDEB"/>
+    
+    <SolidColorBrush x:Key="SystemPill" Color="#182229E6"/>
+    <SolidColorBrush x:Key="SystemPillText" Color="#8696A0"/>
+    
+    <SolidColorBrush x:Key="StatusRingUnseen" Color="#21C063"/>
+    <SolidColorBrush x:Key="StatusRingSeen" Color="#3B4A54"/>
+    
+    <SolidColorBrush x:Key="ScrollBarThumb" Color="#374248"/>
+    <SolidColorBrush x:Key="TitleBarBackground" Color="#161717"/>
+    <SolidColorBrush x:Key="QuoteBackground" Color="#1A2024"/>
+
+    <!-- Puce de filtre sélectionnée -->
+    <SolidColorBrush x:Key="FilterPillSelectedBg" Color="#0F3B2A"/>
+    <SolidColorBrush x:Key="FilterPillSelectedFg" Color="#21C063"/>
+    <SolidColorBrush x:Key="FilterPillUnselectedBg" Color="#202C33"/>
+    <SolidColorBrush x:Key="FilterPillUnselectedFg" Color="#8696A0"/>
+
+</ResourceDictionary>

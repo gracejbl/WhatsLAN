@@ -1,0 +1,110 @@
+<UserControl x:Class="WhatsLAN.App.Views.NavRailView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Width="64" Background="{DynamicResource PanelHeader}">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Séparateur droit 1px -->
+        <Border Grid.RowSpan="2" HorizontalAlignment="Right" Width="1" Background="{DynamicResource Divider}"/>
+
+        <!-- Éléments du haut du rail -->
+        <ItemsControl Grid.Row="0" ItemsSource="{Binding TopNavItems}" Margin="0,12,0,0">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Grid Width="64" Height="50" Cursor="Hand" ToolTip="{Binding Title}">
+                        <Grid.InputBindings>
+                            <MouseBinding MouseAction="LeftClick"
+                                          Command="{Binding DataContext.SelectItemCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                          CommandParameter="{Binding}"/>
+                        </Grid.InputBindings>
+
+                        <!-- Fond de sélection (disque ~40px) -->
+                        <Ellipse Width="40" Height="40"
+                                 Fill="{DynamicResource RowSelected}"
+                                 Visibility="{Binding IsSelected, Converter={StaticResource BoolToVisConverter}}"/>
+
+                        <!-- Icône 24px -->
+                        <Path Width="24" Height="24" Stretch="Uniform"
+                              Fill="{DynamicResource TextPrimary}"
+                              Data="{Binding IconGeometry, Converter={x:Null}, Mode=OneWay}">
+                            <Path.Style>
+                                <Style TargetType="Path">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IconGeometry}" Value="IconChat">
+                                            <Setter Property="Data" Value="{StaticResource IconChat}"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding IconGeometry}" Value="IconPhone">
+                                            <Setter Property="Data" Value="{StaticResource IconPhone}"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding IconGeometry}" Value="IconStatus">
+                                            <Setter Property="Data" Value="{StaticResource IconStatus}"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding IconGeometry}" Value="IconChannel">
+                                            <Setter Property="Data" Value="{StaticResource IconChannel}"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding IconGeometry}" Value="IconCommunities">
+                                            <Setter Property="Data" Value="{StaticResource IconCommunities}"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding IconGeometry}" Value="IconArchive">
+                                            <Setter Property="Data" Value="{StaticResource IconArchive}"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Path.Style>
+                        </Path>
+
+                        <!-- Badge non-lus vert -->
+                        <Border Background="{DynamicResource AccentLight}"
+                                CornerRadius="9" MinWidth="18" Height="18" Padding="4,0"
+                                HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,4,10,0"
+                                Visibility="{Binding HasBadge, Converter={StaticResource BoolToVisConverter}}">
+                            <TextBlock Text="{Binding BadgeCount}"
+                                       Foreground="#FFFFFF" FontSize="11" FontWeight="Bold"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+
+                        <!-- Pastille verte (statut non vu) -->
+                        <Ellipse Width="8" Height="8" Fill="{DynamicResource AccentLight}"
+                                 HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,8,14,0"
+                                 Visibility="{Binding HasUnseenDot, Converter={StaticResource BoolToVisConverter}}"/>
+                    </Grid>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- Éléments du bas du rail (Bascule de thème + Avatar/Paramètres) -->
+        <StackPanel Grid.Row="1" Margin="0,0,0,16" HorizontalAlignment="Center">
+            <!-- Bouton bascule de thème pour tester clair/sombre en direct -->
+            <Button Command="{Binding ToggleThemeCommand}"
+                    ToolTip="Basculer thème Clair / Sombre"
+                    Style="{StaticResource IconButtonStyle}"
+                    Width="40" Height="40" Margin="0,0,0,8">
+                <Path Width="20" Height="20" Stretch="Uniform"
+                      Fill="{DynamicResource TextSecondary}">
+                    <Path.Style>
+                        <Style TargetType="Path">
+                            <Setter Property="Data" Value="{StaticResource IconMoon}"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Theme.IsDarkTheme}" Value="False">
+                                    <Setter Property="Data" Value="{StaticResource IconSun}"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Path.Style>
+                </Path>
+            </Button>
+
+            <!-- Avatar profil / paramètres -->
+            <Grid Width="40" Height="40" Cursor="Hand" ToolTip="Mon profil et paramètres">
+                <Ellipse Fill="{DynamicResource Accent}"/>
+                <TextBlock Text="WL" Foreground="#FFFFFF"
+                           FontWeight="SemiBold" FontSize="14"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Grid>
+        </StackPanel>
+    </Grid>
+</UserControl>
