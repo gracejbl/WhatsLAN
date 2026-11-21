@@ -12,7 +12,6 @@ public partial class WelcomeWindow : Window
         viewModel.ProfileCreated += _ =>
         {
             DialogResult = true;
-            Close();
         };
     }
 }
