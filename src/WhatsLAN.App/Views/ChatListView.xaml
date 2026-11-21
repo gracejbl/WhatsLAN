@@ -264,17 +264,28 @@
                             <!-- Ligne 2 : Aperçu du message et icônes d'état -->
                             <Grid Grid.Row="1" Margin="0,4,0,0">
                                 <StackPanel Orientation="Horizontal" Margin="0,0,50,0">
-                                    <!-- Double coche si message envoyé par moi -->
+                                    <!-- Coche d'accusé si message envoyé par moi -->
                                     <Path Width="14" Height="14" Stretch="Uniform"
                                           Margin="0,0,4,0" VerticalAlignment="Center"
-                                          Data="{StaticResource IconDoubleCheck}"
+                                          Data="{Binding LastMessageStatus, Converter={StaticResource StatusToGeometryConverter}}"
                                           Fill="{Binding LastMessageStatus, Converter={StaticResource TicksColorConverter}}"
                                           Visibility="{Binding LastMessageStatus, Converter={StaticResource NullOrEmptyToVisConverter}}"/>
 
-                                    <TextBlock Text="{Binding LastMessage}"
+                                    <TextBlock Text="{Binding DisplayLastMessage}"
                                                FontSize="14"
-                                               Foreground="{DynamicResource TextSecondary}"
-                                               TextTrimming="CharacterEllipsis"/>
+                                               TextTrimming="CharacterEllipsis">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsTyping}" Value="True">
+                                                        <Setter Property="Foreground" Value="{DynamicResource AccentLight}"/>
+                                                        <Setter Property="FontStyle" Value="Italic"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
                                 </StackPanel>
 
                                 <!-- Badges à droite (Épingle, Sourdine, Compteur non-lus) -->

@@ -19,6 +19,8 @@ public class ChatViewModel : ObservableObject
 
     private ChatItem _chat;
     private string _messageText = string.Empty;
+    private System.Timers.Timer? _typingStopTimer;
+    private DateTime _lastTypingSentUtc = DateTime.MinValue;
 
     public ChatItem Chat
     {
@@ -36,6 +38,7 @@ public class ChatViewModel : ObservableObject
             if (SetProperty(ref _messageText, value))
             {
                 OnPropertyChanged(nameof(CanSend));
+                HandleUserTyping();
             }
         }
     }
@@ -110,7 +113,19 @@ public class ChatViewModel : ObservableObject
             });
         }
 
-        // Remise à zéro des non-lus à l'ouverture de la discussion (§7.4, §9.3)
+        // Remise à zéro des non-lus et envoi des accusés de lecture (§7.4, §9.3)
+        SendReadReceiptsForUnread();
+    }
+
+    private void SendReadReceiptsForUnread()
+    {
+        var myUserId = _profileService.CurrentProfile?.UserId ?? "me";
+        var unreadIds = _messageRepository.GetUnreadIncomingMessageIds(_chat.Id, myUserId);
+        if (unreadIds.Count > 0)
+        {
+            _ = _networkService.SendAckReadAsync(_chat.Id, _chat.Id, unreadIds);
+        }
+
         if (_chat.UnreadCount > 0)
         {
             _chat.UnreadCount = 0;
@@ -121,6 +136,40 @@ public class ChatViewModel : ObservableObject
                 _conversationRepository.Save(conv);
             }
         }
+    }
+
+    private void HandleUserTyping()
+    {
+        if (string.IsNullOrWhiteSpace(_messageText))
+        {
+            SendTypingStop();
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+        if ((now - _lastTypingSentUtc).TotalSeconds > 2.5)
+        {
+            _lastTypingSentUtc = now;
+            _ = _networkService.SendTypingStateAsync(_chat.Id, _chat.Id, "start");
+        }
+
+        if (_typingStopTimer == null)
+        {
+            _typingStopTimer = new System.Timers.Timer(2500) { AutoReset = false };
+            _typingStopTimer.Elapsed += (s, e) => SendTypingStop();
+        }
+        else
+        {
+            _typingStopTimer.Stop();
+        }
+        _typingStopTimer.Start();
+    }
+
+    private void SendTypingStop()
+    {
+        _typingStopTimer?.Stop();
+        _lastTypingSentUtc = DateTime.MinValue;
+        _ = _networkService.SendTypingStateAsync(_chat.Id, _chat.Id, "stop");
     }
 
     public void AddIncomingMessage(Message msg)
@@ -136,7 +185,7 @@ public class ChatViewModel : ObservableObject
             Text = msg.Body,
             Time = msg.CreatedUtc.ToLocalTime().ToString("HH:mm"),
             IsOutgoing = false,
-            Status = "Delivered",
+            Status = "Read",
             IsFirstInCluster = isFirstInCluster,
             SenderName = _chat.Name,
             ShowDateSeparator = showSeparator,
@@ -147,6 +196,9 @@ public class ChatViewModel : ObservableObject
         Chat.LastMessage = msg.Body;
         Chat.LastMessageTime = DateTimeFormatter.FormatChatListTime(msg.CreatedUtc);
         Chat.LastMessageStatus = "";
+
+        // Si la discussion est ouverte et active à l'écran, acquitter immédiatement en lecture (§9.3)
+        _ = _networkService.SendAckReadAsync(_chat.Id, _chat.Id, [msg.Id]);
     }
 
     public void UpdateMessageStatus(string msgId, string status)
@@ -156,7 +208,7 @@ public class ChatViewModel : ObservableObject
         {
             found.Status = status;
         }
-        if (Chat.LastMessageStatus == "Sent" || Chat.LastMessageStatus == "Pending")
+        if (Chat.LastMessageStatus == "Sent" || Chat.LastMessageStatus == "Pending" || Chat.LastMessageStatus == "Delivered")
         {
             Chat.LastMessageStatus = status;
         }
@@ -167,6 +219,7 @@ public class ChatViewModel : ObservableObject
         if (string.IsNullOrWhiteSpace(_messageText)) return;
 
         var text = _messageText.Trim();
+        SendTypingStop();
         MessageText = string.Empty;
 
         var myUserId = _profileService.CurrentProfile?.UserId ?? "me";
@@ -200,7 +253,7 @@ public class ChatViewModel : ObservableObject
 
         if (isPeerOnNetwork)
         {
-            var sent = await _networkService.SendTextMessageAsync(_chat.Id, _chat.Id, text);
+            var sent = await _networkService.SendTextMessageAsync(_chat.Id, _chat.Id, text, msgId);
             if (sent)
             {
                 uiMessage.Status = "Sent";
@@ -216,7 +269,7 @@ public class ChatViewModel : ObservableObject
                 SenderId = myUserId,
                 Kind = "text",
                 Body = text,
-                Status = "Sent",
+                Status = "Pending",
                 CreatedUtc = now
             };
             _messageRepository.Insert(dbMessage);
@@ -229,8 +282,8 @@ public class ChatViewModel : ObservableObject
                 _conversationRepository.Save(conv);
             }
 
-            uiMessage.Status = "Sent";
-            Chat.LastMessageStatus = "Sent";
+            uiMessage.Status = "Pending";
+            Chat.LastMessageStatus = "Pending";
         }
     }
 }

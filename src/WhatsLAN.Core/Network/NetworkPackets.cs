@@ -82,3 +82,24 @@ public class AckDeliveredPacket
     [JsonPropertyName("timestampUtc")]
     public DateTime TimestampUtc { get; set; } = DateTime.UtcNow;
 }
+
+public class AckReadPacket
+{
+    [JsonPropertyName("conversationId")]
+    public string ConversationId { get; set; } = string.Empty;
+
+    [JsonPropertyName("messageIds")]
+    public List<string> MessageIds { get; set; } = [];
+
+    [JsonPropertyName("timestampUtc")]
+    public DateTime TimestampUtc { get; set; } = DateTime.UtcNow;
+}
+
+public class TypingPacket
+{
+    [JsonPropertyName("conversationId")]
+    public string ConversationId { get; set; } = string.Empty;
+
+    [JsonPropertyName("state")]
+    public string State { get; set; } = "start"; // "start", "stop", "recording"
+}

@@ -214,6 +214,56 @@ public class ChatListViewModel : ObservableObject
         }
     }
 
+    private readonly Dictionary<string, System.Timers.Timer> _typingResetTimers = new();
+
+    public void HandlePeerTyping(string peerUserId, string state)
+    {
+        var existing = _allChats.FirstOrDefault(c => c.Id == peerUserId);
+        if (existing == null) return;
+
+        if (state == "start")
+        {
+            existing.IsTyping = true;
+
+            if (_typingResetTimers.TryGetValue(peerUserId, out var timer))
+            {
+                timer.Stop();
+            }
+            else
+            {
+                timer = new System.Timers.Timer(4000) { AutoReset = false };
+                timer.Elapsed += (s, e) =>
+                {
+                    Application.Current?.Dispatcher.Invoke(() =>
+                    {
+                        existing.IsTyping = false;
+                    });
+                };
+                _typingResetTimers[peerUserId] = timer;
+            }
+            timer.Start();
+        }
+        else
+        {
+            if (_typingResetTimers.TryGetValue(peerUserId, out var timer))
+            {
+                timer.Stop();
+            }
+            existing.IsTyping = false;
+        }
+    }
+
+    public void UpdateLastMessageStatus(string msgId, string status)
+    {
+        foreach (var chat in _allChats)
+        {
+            if (chat.LastMessageStatus == "Pending" || chat.LastMessageStatus == "Sent" || chat.LastMessageStatus == "Delivered")
+            {
+                chat.LastMessageStatus = status;
+            }
+        }
+    }
+
     private ChatItem MapToChatItem(Conversation conv)
     {
         var lastMsg = string.IsNullOrEmpty(conv.LastMessageId) ? null : _messageRepository.GetByConversationId(conv.Id, 1).LastOrDefault();

@@ -10,7 +10,7 @@ Légende : ⬜ à faire · 🟨 en cours · ✅ terminé et testé à la main
 | 1 | Fondations : solution, projets, SQLite, profil, modèles | Partie 1 §21 | ✅ |
 | 2 | Réseau de base : UDP, TCP, handshake, chiffrement, présence | Partie 1 §4, §17 | ✅ |
 | 3 | UI principale : liste, messages texte, historique | Partie 1 §6–10 | ✅ |
-| 4 | Accusés, « écrit… », non-lus, file hors-ligne | Partie 1 §9.3 | ⬜ |
+| 4 | Accusés, « écrit… », non-lus, file hors-ligne | Partie 1 §9.3 | ✅ |
 | 5 | Actions sur messages : répondre, modifier, supprimer, réactions, recherche | Partie 1 §9 | ⬜ |
 | 6 | Émojis, notifications, tray, sons, sourdine, épingle, archive, brouillons | Partie 1 §7, §10, §15 | ⬜ |
 | 7 | Fichiers : aperçu, transfert par morceaux, visionneuse | Partie 1 §11 | ⬜ |
@@ -64,16 +64,13 @@ Phases 0 à 5, puis 7 et 9. Une démonstration solide de ces phases vaut mieux q
   - Défilement automatique vers le bas lors de l'arrivée ou de l'envoi de nouveaux messages (`ScrollToBottom()`).
   - Ajout de 10 tests unitaires supplémentaires dans `DateTimeFormatterTests.cs` (26 tests xUnit au total, tous au vert).
 
-## Résumé de la dernière phase
-La Phase 3 enrichit l'interface utilisateur principale avec un affichage des messages et des conversations conforme aux standards visuels de WhatsApp Desktop. Les horodatages dans la liste des discussions s'adaptent dynamiquement (heure, "Hier", jour de la semaine ou date complète) grâce à `DateTimeFormatter.cs` dans `WhatsLAN.Core`. Dans la vue de discussion (`ChatView.xaml`), les messages sont séparés par des pastilles de date flottantes automatiques marquant le premier message de chaque journée ("AUJOURD'HUI", "HIER", etc.). Le sous-titre sous le nom du contact affiche fidèlement son statut de présence ("en ligne", "vu aujourd'hui à ...", ou "hors ligne"). L'utilisateur peut démarrer une discussion via le bouton "+" qui ouvre une boîte de dialogue dédiée (`NewChatWindow.xaml`) listant les pairs LAN découverts et permettant l'ajout manuel. L'historique complet est restauré depuis la base SQLite au chargement de chaque fil, le compteur de non-lus est remis à zéro à l'ouverture, et le conteneur de messages défile automatiquement vers le bas à chaque nouveau message reçu ou envoyé.
+- **Phase 4** :
+  - Cycle de vie complet des accusés de réception sous les bulles et dans la liste des discussions : ⏱ horloge grise (`Pending`), ✓ simple coche grise (`Sent`), ✓✓ double coche grise (`Delivered`), ✓✓ double coche bleue (`Read`), ⚠ rouge (`Failed`) via `StatusToGeometryConverter` et `TicksColorConverter`.
+  - Implémentation du protocole `ACK_READ` (§4.4, §9.3) chiffré en AES-GCM et mis à jour en base SQLite (`MarkMessagesAsRead`) à l'ouverture de la discussion ou à l'arrivée d'un message lorsque la discussion est active.
+  - Détection temps réel de la frappe au clavier avec debounce et timer d'inactivité (envoi de `TYPING start` et `TYPING stop`).
+  - Affichage réactif de « écrit… » en vert et italique dans le sous-titre de l'en-tête de discussion et dans l'aperçu de la liste des conversations avec réinitialisation automatique après 4 s sans signal.
+  - File d'attente hors-ligne (Offline Queue, §4.5) : stockage automatique des messages en `Pending` lorsque le contact est inaccessible, et vidage/dépilement automatique ordonné dès sa reconnexion (`FlushPendingMessagesAsync`).
+  - Ajout de 4 nouveaux tests unitaires xUnit dédiés (`ReceiptsAndTypingTests.cs`) portant le total de la suite de tests à 30 tests au vert.
 
-- Correction du masquage du placeholder de saisie pour empêcher la superposition avec le texte tapé par l'utilisateur.
-- Implémentation du service cryptographique `CryptoService.cs` avec AES-256-GCM et dérivation de clé HKDF-SHA256.
-- Réalisation du cadrage binaire de paquets `PacketFraming.cs` selon la structure exacte imposée par les spécifications.
-- Développement du service de découverte UDP broadcast `DiscoveryService.cs` (port 50000, paquets HELLO et BYE).
-- Implémentation de la détection de présence automatique avec passage au statut hors-ligne après 10 secondes sans annonce.
-- Création du serveur d'écoute TCP `TcpServer.cs` et du gestionnaire de connexions chiffrées `ConnectionManager.cs`.
-- Intégration de la poignée de main `Handshake` avec dérivation réciproque de la clé de session AES-256.
-- Orchestration complète via `NetworkService.cs` avec persistance SQLite et accusés de réception automatiques.
-- Raccordement temps réel à l'UI : mise à jour instantanée de la présence et réception en direct des messages sans rafraîchissement.
-- Exécution avec succès de 16 tests unitaires xUnit validant l'ensemble de la pile réseau et cryptographique.
+## Résumé de la dernière phase
+La Phase 4 apporte le moteur complet d'accusés de réception, d'indicateur de frappe, de gestion des non-lus et de file d'attente hors-ligne de WhatsApp Desktop. Les messages passent fidèlement par les 4 étapes visuelles sous la bulle : horloge ⏱ en attente, coche simple ✓ envoyée sur le réseau, double coche grise ✓✓ remise au destinataire et double coche bleue ✓✓ dès que la discussion est ouverte et lue par le contact. Lorsque l'interlocuteur tape au clavier, un paquet chiffré `TYPING` est émis et fait apparaître la mention « écrit… » en vert dans le sous-titre et la liste des discussions. Les messages entrants non lus incrémentent le badge vert de la conversation et sont automatiquement acquittés en lecture (`ACK_READ`) dès l'ouverture du fil. Si un contact est hors-ligne ou injoignable, les messages restent stockés en `Pending` dans SQLite et sont automatiquement et séquentiellement dépilés et remis dès sa réapparition sur le réseau local.

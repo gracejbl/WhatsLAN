@@ -21,6 +21,7 @@ public class ChatItem : ObservableObject
     private bool _isSelected;
     private string _subtitle = "hors ligne";
     private DateTime? _lastSeenUtc;
+    private bool _isTyping;
 
     public string Id
     {
@@ -49,8 +50,29 @@ public class ChatItem : ObservableObject
     public string LastMessage
     {
         get => _lastMessage;
-        set => SetProperty(ref _lastMessage, value);
+        set
+        {
+            if (SetProperty(ref _lastMessage, value))
+            {
+                OnPropertyChanged(nameof(DisplayLastMessage));
+            }
+        }
     }
+
+    public bool IsTyping
+    {
+        get => _isTyping;
+        set
+        {
+            if (SetProperty(ref _isTyping, value))
+            {
+                UpdateSubtitle();
+                OnPropertyChanged(nameof(DisplayLastMessage));
+            }
+        }
+    }
+
+    public string DisplayLastMessage => _isTyping ? "écrit…" : _lastMessage;
 
     public string LastMessageTime
     {
@@ -116,7 +138,14 @@ public class ChatItem : ObservableObject
 
     public void UpdateSubtitle()
     {
-        Subtitle = DateTimeFormatter.FormatLastSeen(_isOnline, _lastSeenUtc);
+        if (_isTyping)
+        {
+            Subtitle = "écrit…";
+        }
+        else
+        {
+            Subtitle = DateTimeFormatter.FormatLastSeen(_isOnline, _lastSeenUtc);
+        }
     }
 
     public bool HasUnseenStatus

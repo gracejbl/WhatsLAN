@@ -117,6 +117,43 @@ public class MainViewModel : ObservableObject
             Application.Current?.Dispatcher.Invoke(() =>
             {
                 CurrentChat?.UpdateMessageStatus(msgId, "Delivered");
+                _chatList.UpdateLastMessageStatus(msgId, "Delivered");
+            });
+        };
+
+        _networkService.MessageStatusChanged += (s, e) =>
+        {
+            Application.Current?.Dispatcher.Invoke(() =>
+            {
+                var (msgId, status) = e;
+                CurrentChat?.UpdateMessageStatus(msgId, status);
+                _chatList.UpdateLastMessageStatus(msgId, status);
+            });
+        };
+
+        _networkService.MessagesRead += (s, e) =>
+        {
+            Application.Current?.Dispatcher.Invoke(() =>
+            {
+                var (peerId, msgIds) = e;
+                foreach (var msgId in msgIds)
+                {
+                    CurrentChat?.UpdateMessageStatus(msgId, "Read");
+                    _chatList.UpdateLastMessageStatus(msgId, "Read");
+                }
+            });
+        };
+
+        _networkService.PeerTypingChanged += (s, e) =>
+        {
+            Application.Current?.Dispatcher.Invoke(() =>
+            {
+                var (peerId, state) = e;
+                _chatList.HandlePeerTyping(peerId, state);
+                if (CurrentChat?.Chat.Id == peerId)
+                {
+                    CurrentChat.Chat.IsTyping = (state == "start");
+                }
             });
         };
     }

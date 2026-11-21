@@ -17,6 +17,9 @@ public class NetworkService : IDisposable
     public event EventHandler<(string PeerUserId, Message Message)>? MessageReceived;
     public event EventHandler<(string PeerUserId, bool IsOnline)>? PeerPresenceChanged;
     public event EventHandler<string>? MessageDelivered;
+    public event EventHandler<(string MessageId, string Status)>? MessageStatusChanged;
+    public event EventHandler<(string PeerUserId, List<string> MessageIds)>? MessagesRead;
+    public event EventHandler<(string PeerUserId, string State)>? PeerTypingChanged;
 
     public int TcpPort => _connectionManager.ListeningPort;
     public Profile MyProfile => _profile;
@@ -79,6 +82,15 @@ public class NetworkService : IDisposable
             {
                 _ = _connectionManager.GetOrCreateConnectionAsync(peer.UserId, ip, peer.TcpPort, peer.PublicKey);
             }
+
+            // Dépilement des messages en attente (§4.5)
+            _ = FlushPendingMessagesAsync(peer.UserId);
+        };
+
+        // Reconnexion TCP réussie : vider la file d'attente
+        _connectionManager.PeerConnected += (s, peerId) =>
+        {
+            _ = FlushPendingMessagesAsync(peerId);
         };
 
         // Perte d'un pair (10s sans nouvelles)
@@ -164,10 +176,108 @@ public class NetworkService : IDisposable
             var (_, ack) = e;
             _messageRepository.UpdateStatus(ack.MessageId, "Delivered");
             MessageDelivered?.Invoke(this, ack.MessageId);
+            MessageStatusChanged?.Invoke(this, (ack.MessageId, "Delivered"));
+        };
+
+        // Réception des accusés de lecture (§4.4, §9.3)
+        _connectionManager.AckReadReceived += (s, e) =>
+        {
+            var (peerId, ack) = e;
+            foreach (var msgId in ack.MessageIds)
+            {
+                _messageRepository.UpdateStatus(msgId, "Read");
+                MessageStatusChanged?.Invoke(this, (msgId, "Read"));
+            }
+            MessagesRead?.Invoke(this, (peerId, ack.MessageIds));
+        };
+
+        // Réception de l'état "en train d'écrire..." (§4.4, §7.4, §8)
+        _connectionManager.TypingReceived += (s, e) =>
+        {
+            var (peerId, typing) = e;
+            PeerTypingChanged?.Invoke(this, (peerId, typing.State));
         };
     }
 
-    public async Task<bool> SendTextMessageAsync(string conversationId, string peerUserId, string text, string? replyToId = null)
+    public async Task FlushPendingMessagesAsync(string peerUserId)
+    {
+        var contact = _contactRepository.GetById(peerUserId);
+        if (contact == null || string.IsNullOrEmpty(contact.LastIp) || string.IsNullOrEmpty(contact.PublicKey))
+        {
+            return;
+        }
+
+        // On cherche les conversations associées à ce contact
+        var pendingMessages = _messageRepository.GetPendingMessagesByConversation(peerUserId);
+        if (pendingMessages.Count == 0) return;
+
+        foreach (var msg in pendingMessages)
+        {
+            var packet = new MessagePacket
+            {
+                Id = msg.Id,
+                ConversationId = msg.ConversationId,
+                From = _profile.UserId,
+                To = peerUserId,
+                Text = msg.Body,
+                ReplyToId = msg.ReplyToId,
+                TimestampUtc = msg.CreatedUtc,
+                Kind = msg.Kind
+            };
+
+            var sent = await _connectionManager.SendMessageAsync(
+                peerUserId,
+                contact.LastIp,
+                contact.LastPort,
+                contact.PublicKey,
+                packet);
+
+            if (sent)
+            {
+                _messageRepository.UpdateStatus(msg.Id, "Sent");
+                MessageStatusChanged?.Invoke(this, (msg.Id, "Sent"));
+            }
+        }
+    }
+
+    public async Task SendAckReadAsync(string conversationId, string peerUserId, List<string> messageIds)
+    {
+        if (messageIds.Count == 0) return;
+
+        // 1. Marquer localement comme lus
+        _messageRepository.MarkMessagesAsRead(messageIds);
+
+        // 2. Remettre le compteur de non-lus à zéro pour la conversation
+        var conv = _conversationRepository.GetById(conversationId);
+        if (conv != null && conv.UnreadCount > 0)
+        {
+            conv.UnreadCount = 0;
+            _conversationRepository.Save(conv);
+        }
+
+        // 3. Envoyer le paquet au pair s'il est connecté
+        var ack = new AckReadPacket
+        {
+            ConversationId = conversationId,
+            MessageIds = messageIds,
+            TimestampUtc = DateTime.UtcNow
+        };
+
+        await _connectionManager.SendAckReadAsync(peerUserId, ack);
+    }
+
+    public async Task SendTypingStateAsync(string conversationId, string peerUserId, string state)
+    {
+        var packet = new TypingPacket
+        {
+            ConversationId = conversationId,
+            State = state
+        };
+
+        await _connectionManager.SendTypingAsync(peerUserId, packet);
+    }
+
+    public async Task<bool> SendTextMessageAsync(string conversationId, string peerUserId, string text, string? messageId = null, string? replyToId = null)
     {
         var contact = _contactRepository.GetById(peerUserId);
         if (contact == null || string.IsNullOrEmpty(contact.LastIp) || string.IsNullOrEmpty(contact.PublicKey))
@@ -175,12 +285,12 @@ public class NetworkService : IDisposable
             return false;
         }
 
-        var messageId = Guid.NewGuid().ToString();
+        var msgId = messageId ?? Guid.NewGuid().ToString();
         var now = DateTime.UtcNow;
 
         var packet = new MessagePacket
         {
-            Id = messageId,
+            Id = msgId,
             ConversationId = conversationId,
             From = _profile.UserId,
             To = peerUserId,
@@ -199,7 +309,7 @@ public class NetworkService : IDisposable
 
         var dbMessage = new Message
         {
-            Id = messageId,
+            Id = msgId,
             ConversationId = conversationId,
             SenderId = _profile.UserId,
             Kind = "text",
@@ -214,7 +324,7 @@ public class NetworkService : IDisposable
         var conv = _conversationRepository.GetById(conversationId);
         if (conv != null)
         {
-            conv.LastMessageId = messageId;
+            conv.LastMessageId = msgId;
             conv.UpdatedUtc = now;
             _conversationRepository.Save(conv);
         }

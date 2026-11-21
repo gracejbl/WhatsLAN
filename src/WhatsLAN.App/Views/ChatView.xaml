@@ -39,9 +39,21 @@
                                Foreground="{DynamicResource TextPrimary}"
                                TextTrimming="CharacterEllipsis"/>
                     <TextBlock Text="{Binding Chat.Subtitle}"
-                               FontSize="13" Foreground="{DynamicResource TextSecondary}"
+                               FontSize="13"
                                TextTrimming="CharacterEllipsis"
-                               Visibility="{Binding Chat.Subtitle, Converter={StaticResource StringEmptyToVisibilityConverter}}"/>
+                               Visibility="{Binding Chat.Subtitle, Converter={StaticResource StringEmptyToVisibilityConverter}}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Chat.IsTyping}" Value="True">
+                                        <Setter Property="Foreground" Value="{DynamicResource AccentLight}"/>
+                                        <Setter Property="FontStyle" Value="Italic"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
                 </StackPanel>
 
                 <!-- Boutons d'action (Vidéo, Appel, Recherche, Menu) -->
@@ -190,10 +202,10 @@
                                                        FontSize="11" Foreground="{DynamicResource TextSecondary}"
                                                        VerticalAlignment="Center"/>
 
-                                            <!-- Double coche pour message sortant -->
+                                            <!-- Accusé pour message sortant (⏱, ✓, ✓✓ gris, ✓✓ bleu, ⚠) -->
                                             <Path Width="14" Height="14" Stretch="Uniform"
                                                   Margin="4,0,0,0" VerticalAlignment="Center"
-                                                  Data="{StaticResource IconDoubleCheck}"
+                                                  Data="{Binding Status, Converter={StaticResource StatusToGeometryConverter}}"
                                                   Fill="{Binding Status, Converter={StaticResource TicksColorConverter}}"
                                                   Visibility="{Binding IsOutgoing, Converter={StaticResource BoolToVisConverter}}"/>
                                         </StackPanel>

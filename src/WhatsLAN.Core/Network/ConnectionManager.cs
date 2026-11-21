@@ -15,6 +15,8 @@ public class ConnectionManager : IDisposable
 
     public event EventHandler<(string PeerUserId, MessagePacket Message)>? MessageReceived;
     public event EventHandler<(string PeerUserId, AckDeliveredPacket Ack)>? AckReceived;
+    public event EventHandler<(string PeerUserId, AckReadPacket Ack)>? AckReadReceived;
+    public event EventHandler<(string PeerUserId, TypingPacket Typing)>? TypingReceived;
     public event EventHandler<string>? PeerConnected;
     public event EventHandler<string>? PeerDisconnected;
 
@@ -153,6 +155,40 @@ public class ConnectionManager : IDisposable
         return false;
     }
 
+    public async Task<bool> SendAckReadAsync(string peerUserId, AckReadPacket ack)
+    {
+        if (_activeConnections.TryGetValue(peerUserId, out var connection) && connection.IsConnected)
+        {
+            try
+            {
+                await connection.SendJsonAsync(PacketType.AckRead, ack);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+        return false;
+    }
+
+    public async Task<bool> SendTypingAsync(string peerUserId, TypingPacket typing)
+    {
+        if (_activeConnections.TryGetValue(peerUserId, out var connection) && connection.IsConnected)
+        {
+            try
+            {
+                await connection.SendJsonAsync(PacketType.Typing, typing);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+        return false;
+    }
+
     private void RegisterConnectionEvents(PeerConnection conn)
     {
         conn.PacketReceived += (s, e) =>
@@ -176,6 +212,24 @@ public class ConnectionManager : IDisposable
                 if (ack != null)
                 {
                     AckReceived?.Invoke(this, (peerId, ack));
+                }
+            }
+            else if (e.Type == PacketType.AckRead)
+            {
+                var json = Encoding.UTF8.GetString(e.Payload);
+                var ack = JsonSerializer.Deserialize<AckReadPacket>(json);
+                if (ack != null)
+                {
+                    AckReadReceived?.Invoke(this, (peerId, ack));
+                }
+            }
+            else if (e.Type == PacketType.Typing)
+            {
+                var json = Encoding.UTF8.GetString(e.Payload);
+                var typing = JsonSerializer.Deserialize<TypingPacket>(json);
+                if (typing != null)
+                {
+                    TypingReceived?.Invoke(this, (peerId, typing));
                 }
             }
         };

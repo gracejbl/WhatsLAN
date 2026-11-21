@@ -93,4 +93,79 @@ public class MessageRepository
 
         cmd.ExecuteNonQuery();
     }
+
+    public List<Message> GetPendingMessagesByConversation(string conversationId)
+    {
+        var list = new List<Message>();
+        using var conn = _database.CreateConnection();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            SELECT id, conversationId, senderId, kind, body, replyToId, status, 
+                   createdUtc, editedUtc, isDeleted, isStarred, attachmentId, durationMs
+            FROM Message
+            WHERE conversationId = @convId AND status = 'Pending'
+            ORDER BY createdUtc ASC;
+        ";
+        cmd.Parameters.AddWithValue("@convId", conversationId);
+
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read())
+        {
+            list.Add(new Message
+            {
+                Id = reader.GetString(0),
+                ConversationId = reader.GetString(1),
+                SenderId = reader.GetString(2),
+                Kind = reader.GetString(3),
+                Body = reader.GetString(4),
+                ReplyToId = reader.IsDBNull(5) ? null : reader.GetString(5),
+                Status = reader.GetString(6),
+                CreatedUtc = DateTime.Parse(reader.GetString(7)),
+                EditedUtc = reader.IsDBNull(8) ? null : DateTime.Parse(reader.GetString(8)),
+                IsDeleted = reader.GetInt32(9) == 1,
+                IsStarred = reader.GetInt32(10) == 1,
+                AttachmentId = reader.IsDBNull(11) ? null : reader.GetString(11),
+                DurationMs = reader.IsDBNull(12) ? null : reader.GetInt32(12)
+            });
+        }
+
+        return list;
+    }
+
+    public List<string> GetUnreadIncomingMessageIds(string conversationId, string myUserId)
+    {
+        var list = new List<string>();
+        using var conn = _database.CreateConnection();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            SELECT id
+            FROM Message
+            WHERE conversationId = @convId AND senderId != @myUserId AND status != 'Read';
+        ";
+        cmd.Parameters.AddWithValue("@convId", conversationId);
+        cmd.Parameters.AddWithValue("@myUserId", myUserId);
+
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read())
+        {
+            list.Add(reader.GetString(0));
+        }
+
+        return list;
+    }
+
+    public void MarkMessagesAsRead(IEnumerable<string> messageIds)
+    {
+        using var conn = _database.CreateConnection();
+        using var trans = conn.BeginTransaction();
+        foreach (var id in messageIds)
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.Transaction = trans;
+            cmd.CommandText = "UPDATE Message SET status = 'Read' WHERE id = @id;";
+            cmd.Parameters.AddWithValue("@id", id);
+            cmd.ExecuteNonQuery();
+        }
+        trans.Commit();
+    }
 }
