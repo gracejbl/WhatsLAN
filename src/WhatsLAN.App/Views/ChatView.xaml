@@ -41,7 +41,7 @@
                     <TextBlock Text="{Binding Chat.Subtitle}"
                                FontSize="13"
                                TextTrimming="CharacterEllipsis"
-                               Visibility="{Binding Chat.Subtitle, Converter={StaticResource StringEmptyToVisibilityConverter}}">
+                               Visibility="{Binding Chat.Subtitle, Converter={StaticResource NullOrEmptyToVisConverter}}">
                         <TextBlock.Style>
                             <Style TargetType="TextBlock">
                                 <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>

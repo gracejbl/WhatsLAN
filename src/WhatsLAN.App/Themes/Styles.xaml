@@ -5,6 +5,7 @@
     <BooleanToVisibilityConverter x:Key="BoolToVisConverter"/>
     <converters:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisConverter"/>
     <converters:StringEmptyToVisibilityConverter x:Key="StringEmptyToVisConverter"/>
+    <converters:StringEmptyToVisibilityConverter x:Key="StringEmptyToVisibilityConverter"/>
     <converters:NullOrEmptyToVisibilityConverter x:Key="NullOrEmptyToVisConverter"/>
     <converters:TicksColorConverter x:Key="TicksColorConverter"/>
     <converters:StatusToGeometryConverter x:Key="StatusToGeometryConverter"/>
