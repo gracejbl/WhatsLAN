@@ -10,12 +10,13 @@ namespace WhatsLAN.App;
 public partial class App : Application
 {
     private Database? _database;
+    private NetworkService? _networkService;
 
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
 
-        // 1. Analyse des arguments de ligne de commande (--port <port>, --data <path>)
+        // 1. Analyse des arguments CLI (--port <port>, --data <path>)
         string? customDataDir = null;
         int customPort = 50001;
 
@@ -51,6 +52,7 @@ public partial class App : Application
         // 3. Initialisation de la base SQLite et des dépôts
         _database = new Database(dbPath);
         var profileRepo = new ProfileRepository(_database);
+        var contactRepo = new ContactRepository(_database);
         var convRepo = new ConversationRepository(_database);
         var msgRepo = new MessageRepository(_database);
         var settingsRepo = new SettingsRepository(_database);
@@ -70,8 +72,20 @@ public partial class App : Application
             }
         }
 
-        // 5. Ouverture de la fenêtre principale
-        var mainVm = new MainViewModel(_database, profileService, convRepo, msgRepo);
+        var currentProfile = profileService.CurrentProfile!;
+
+        // 5. Initialisation et démarrage du service réseau P2P (UDP broadcast + TCP listener)
+        _networkService = new NetworkService(
+            currentProfile,
+            customPort,
+            contactRepo,
+            convRepo,
+            msgRepo);
+
+        _networkService.Start();
+
+        // 6. Ouverture de la fenêtre principale
+        var mainVm = new MainViewModel(_database, profileService, contactRepo, convRepo, msgRepo, _networkService);
         var mainWindow = new MainWindow(mainVm);
         MainWindow = mainWindow;
         mainWindow.Show();
@@ -79,6 +93,7 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _networkService?.Dispose();
         _database?.Dispose();
         base.OnExit(e);
     }

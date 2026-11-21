@@ -253,7 +253,7 @@
                                Foreground="{DynamicResource TextSecondary}"
                                FontSize="14" VerticalAlignment="Center"
                                IsHitTestVisible="False"
-                               Visibility="{Binding MessageText, Converter={StaticResource InverseBoolToVisConverter}}"/>
+                               Visibility="{Binding MessageText, Converter={StaticResource StringEmptyToVisConverter}}"/>
                 </Grid>
 
                 <!-- Bouton Micro ou Envoyer -->

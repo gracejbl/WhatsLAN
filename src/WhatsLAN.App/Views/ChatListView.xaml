@@ -85,7 +85,7 @@
                            Foreground="{DynamicResource TextSecondary}"
                            FontSize="14" VerticalAlignment="Center"
                            IsHitTestVisible="False"
-                           Visibility="{Binding SearchText, Converter={StaticResource InverseBoolToVisConverter}}"/>
+                           Visibility="{Binding SearchText, Converter={StaticResource StringEmptyToVisConverter}}"/>
             </Grid>
         </Border>
 

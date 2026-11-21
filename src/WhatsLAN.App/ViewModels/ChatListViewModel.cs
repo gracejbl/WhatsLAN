@@ -12,7 +12,10 @@ public class ChatListViewModel : ObservableObject
 {
     private readonly ConversationRepository _conversationRepository;
     private readonly MessageRepository _messageRepository;
+    private readonly ContactRepository _contactRepository;
     private readonly ProfileService _profileService;
+    private readonly NetworkService _networkService;
+
     private string _searchText = string.Empty;
     private ChatItem? _selectedChat;
     private FilterPill? _selectedFilter;
@@ -71,11 +74,15 @@ public class ChatListViewModel : ObservableObject
     public ChatListViewModel(
         ConversationRepository conversationRepository,
         MessageRepository messageRepository,
-        ProfileService profileService)
+        ContactRepository contactRepository,
+        ProfileService profileService,
+        NetworkService networkService)
     {
         _conversationRepository = conversationRepository;
         _messageRepository = messageRepository;
+        _contactRepository = contactRepository;
         _profileService = profileService;
+        _networkService = networkService;
 
         InitializeFilterPills();
         _selectedFilter = FilterPills.FirstOrDefault();
@@ -121,15 +128,86 @@ public class ChatListViewModel : ObservableObject
         }
     }
 
+    public void UpdatePeerPresence(string peerUserId, bool isOnline)
+    {
+        var existing = _allChats.FirstOrDefault(c => c.Id == peerUserId);
+        var contact = _contactRepository.GetById(peerUserId);
+
+        if (existing == null && contact != null)
+        {
+            // Pair découvert via le broadcast UDP : l'ajouter dans la liste des conversations
+            var conversation = _conversationRepository.GetById(peerUserId) ?? new Conversation
+            {
+                Id = peerUserId,
+                Type = "direct",
+                PeerUserId = contact.Name,
+                Pinned = false,
+                Muted = false,
+                Archived = false,
+                UnreadCount = 0,
+                UpdatedUtc = DateTime.UtcNow
+            };
+            _conversationRepository.Save(conversation);
+
+            existing = MapToChatItem(conversation);
+            existing.IsOnline = isOnline;
+            _allChats.Insert(0, existing);
+            Chats.Insert(0, existing);
+            OnPropertyChanged(nameof(HasChats));
+
+            if (SelectedChat == null)
+            {
+                SelectedChat = existing;
+            }
+            return;
+        }
+
+        if (existing != null)
+        {
+            existing.IsOnline = isOnline;
+            if (contact != null)
+            {
+                existing.Name = contact.Name;
+            }
+        }
+    }
+
+    public void HandleIncomingMessage(string peerUserId, Message msg)
+    {
+        var existing = _allChats.FirstOrDefault(c => c.Id == peerUserId);
+        var contact = _contactRepository.GetById(peerUserId);
+
+        if (existing == null)
+        {
+            UpdatePeerPresence(peerUserId, true);
+            existing = _allChats.FirstOrDefault(c => c.Id == peerUserId);
+        }
+
+        if (existing != null)
+        {
+            existing.LastMessage = msg.Body;
+            existing.LastMessageTime = msg.CreatedUtc.ToLocalTime().ToString("HH:mm");
+            existing.LastMessageStatus = "";
+            if (SelectedChat?.Id != peerUserId)
+            {
+                existing.UnreadCount += 1;
+            }
+
+            // Remonter la discussion en haut de liste
+            _allChats.Remove(existing);
+            _allChats.Insert(0, existing);
+
+            Chats.Remove(existing);
+            Chats.Insert(0, existing);
+        }
+    }
+
     private ChatItem MapToChatItem(Conversation conv)
     {
-        // Récupérer le dernier message si existant
         var lastMsg = string.IsNullOrEmpty(conv.LastMessageId) ? null : _messageRepository.GetByConversationId(conv.Id, 1).LastOrDefault();
 
-        var displayName = !string.IsNullOrEmpty(conv.PeerUserId)
-            ? conv.PeerUserId
-            : (conv.Type == "group" ? "Groupe" : "Discussion");
-
+        var contact = _contactRepository.GetById(conv.Id);
+        var displayName = contact?.Name ?? conv.PeerUserId ?? "Contact";
         var initials = displayName.Length >= 2 ? displayName[..2].ToUpper() : displayName.ToUpper();
 
         return new ChatItem
@@ -144,13 +222,13 @@ public class ChatListViewModel : ObservableObject
             IsPinned = conv.Pinned,
             IsMuted = conv.Muted,
             IsGroup = conv.Type == "group",
-            LastMessageStatus = lastMsg?.Status ?? ""
+            LastMessageStatus = lastMsg?.Status ?? "",
+            IsOnline = contact?.IsOnline ?? false
         };
     }
 
     private void CreateNewDirectChat()
     {
-        // Créer une nouvelle discussion dans la base SQLite locale
         var convId = Guid.NewGuid().ToString();
         var convNumber = _allChats.Count + 1;
         var peerName = $"Contact {convNumber}";

@@ -8,7 +8,7 @@ Légende : ⬜ à faire · 🟨 en cours · ✅ terminé et testé à la main
 |---|---|---|---|
 | 0 | Design : thèmes clair/sombre, rail, 3 zones, bulles, données factices | Partie 2 §1–2 | ✅ |
 | 1 | Fondations : solution, projets, SQLite, profil, modèles | Partie 1 §21 | ✅ |
-| 2 | Réseau de base : UDP, TCP, handshake, chiffrement, présence | Partie 1 §4, §17 | ⬜ |
+| 2 | Réseau de base : UDP, TCP, handshake, chiffrement, présence | Partie 1 §4, §17 | ✅ |
 | 3 | UI principale : liste, messages texte, historique | Partie 1 §6–10 | ⬜ |
 | 4 | Accusés, « écrit… », non-lus, file hors-ligne | Partie 1 §9.3 | ⬜ |
 | 5 | Actions sur messages : répondre, modifier, supprimer, réactions, recherche | Partie 1 §9 | ⬜ |
@@ -46,25 +46,26 @@ Phases 0 à 5, puis 7 et 9. Une démonstration solide de ces phases vaut mieux q
   - Intégration d'un bouton de bascule de thème clair/sombre en direct sur le rail de navigation (icône soleil/lune) pour vérifier immédiatement les deux thèmes.
   - Données factices génériques strictement isolées dans `DesignTimeData.cs` conformément à la règle d'AGENTS.md.
 
-- **Phase 1** :
-  - Création de la bibliothèque `src/WhatsLAN.Core` (.NET 8) strictement découplée de toute dépendance WPF.
-  - Implémentation du stockage SQLite avec `Microsoft.Data.Sqlite` (`Database`, `ProfileRepository`, `ConversationRepository`, `MessageRepository`, `SettingsRepository`) en mode WAL.
-  - Cryptographie asymétrique ECDH NIST P-256 avec dérivation de secret partagé via `System.Security.Cryptography` (`KeyManager`).
-  - Écran de bienvenue `WelcomeWindow` pour la création d'identité au premier lancement (pseudo 1-25 car., statut, génération GUID et clés).
-  - Gestion des arguments `--data` et `--port` dans `App.xaml.cs` pour exécuter plusieurs instances indépendantes sur une même machine.
-  - Déconnexion complète de `DesignTimeData.cs` de l'exécution normale : l'application est alimentée exclusivement par SQLite.
-  - Projet de tests `src/WhatsLAN.Tests` créé avec 9 tests unitaires validant la crypto et les opérations SQLite, tous passés avec succès.
+- **Correction ergonomie** :
+  - Résolution du bogue de superposition visuelle entre le texte saisi et le filigrane (« Écrivez un message » / « Rechercher… ») via le convertisseur dédié `StringEmptyToVisibilityConverter`.
+- **Phase 2** :
+  - Implémentation du chiffrement E2E AES-256-GCM et dérivation de clé HKDF-SHA256 (`info="WhatsLAN-v1"`) dans `WhatsLAN.Core.Security.CryptoService`.
+  - Format de trame binaire conforme au §4.3 : `[4 octets longueur big-endian][1 octet type][1 octet flags][nonce 12 octets][payload chiffré AES-GCM][tag 16 octets]`.
+  - Découverte automatique des pairs en UDP broadcast sur le port 50000 avec paquets `HELLO` (période 3 s) et `BYE`, et bascule hors-ligne après 10 s d'inactivité.
+  - Écoute TCP et gestion des connexions P2P directes avec `TcpServer`, arbitrage anti-collision par comparaison ordinale des GUIDs et poignée de main `Handshake` sécurisée.
+  - Couche d'orchestration `NetworkService` connectée à l'UI WPF, mettant à jour la présence (points verts) et relayant les messages et accusés réels chiffrés.
+  - Suite de 16 tests unitaires xUnit validant le chiffrement, les trames, la poignée de main réseau et l'échange chiffré.
 
 ## Résumé de la dernière phase
 (l'agent écrit ici 10 lignes d'explication simple de ce qui a été fait et où se trouve chaque partie, utile pour la présentation orale)
 
-- Création du projet de logique métier `src/WhatsLAN.Core` et du projet de tests xUnit `src/WhatsLAN.Tests`.
-- Modélisation des entités clés dans `WhatsLAN.Core.Models` : `Profile`, `Contact`, `Conversation`, `Message`, `Attachment`, `Setting`.
-- Mise en place du moteur SQLite `Database.cs` avec pragmas WAL et création automatique de toutes les tables nécessaires.
-- Développement des dépôts SQLite pour profils, conversations, messages et paramètres système dans `WhatsLAN.Core.Storage`.
-- Développement du gestionnaire cryptographique `KeyManager.cs` générant les paires de clés ECDH P-256 et calculant le secret partagé.
-- Implémentation de `ProfileService.cs` pour la validation du pseudo, la persistance du compte et la gestion de l'identité locale.
-- Création de l'écran de premier lancement `WelcomeWindow.xaml` invitant l'utilisateur à créer son compte avant d'ouvrir la fenêtre principale.
-- Prise en charge des arguments CLI `--data` et `--port` dans `App.xaml.cs` permettant de tester plusieurs instances sur le même poste.
-- Raccordement des ViewModels à la base SQLite réelle et arrêt définitif de l'alimentation par données factices.
-- Écriture et exécution réussie de 9 tests unitaires xUnit couvrant les échanges de clés ECDH, l'accès base et la validation.
+- Correction du masquage du placeholder de saisie pour empêcher la superposition avec le texte tapé par l'utilisateur.
+- Implémentation du service cryptographique `CryptoService.cs` avec AES-256-GCM et dérivation de clé HKDF-SHA256.
+- Réalisation du cadrage binaire de paquets `PacketFraming.cs` selon la structure exacte imposée par les spécifications.
+- Développement du service de découverte UDP broadcast `DiscoveryService.cs` (port 50000, paquets HELLO et BYE).
+- Implémentation de la détection de présence automatique avec passage au statut hors-ligne après 10 secondes sans annonce.
+- Création du serveur d'écoute TCP `TcpServer.cs` et du gestionnaire de connexions chiffrées `ConnectionManager.cs`.
+- Intégration de la poignée de main `Handshake` avec dérivation réciproque de la clé de session AES-256.
+- Orchestration complète via `NetworkService.cs` avec persistance SQLite et accusés de réception automatiques.
+- Raccordement temps réel à l'UI : mise à jour instantanée de la présence et réception en direct des messages sans rafraîchissement.
+- Exécution avec succès de 16 tests unitaires xUnit validant l'ensemble de la pile réseau et cryptographique.

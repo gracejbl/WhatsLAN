@@ -1,6 +1,8 @@
+using System.Windows;
 using System.Windows.Input;
 using WhatsLAN.App.Models;
 using WhatsLAN.App.MVVM;
+using WhatsLAN.Core.Models;
 using WhatsLAN.Core.Services;
 using WhatsLAN.Core.Storage;
 
@@ -10,8 +12,10 @@ public class MainViewModel : ObservableObject
 {
     private readonly Database _database;
     private readonly ProfileService _profileService;
+    private readonly ContactRepository _contactRepository;
     private readonly ConversationRepository _conversationRepository;
     private readonly MessageRepository _messageRepository;
+    private readonly NetworkService _networkService;
 
     private NavRailViewModel _navRail;
     private ChatListViewModel _chatList;
@@ -48,16 +52,20 @@ public class MainViewModel : ObservableObject
     public MainViewModel(
         Database database,
         ProfileService profileService,
+        ContactRepository contactRepository,
         ConversationRepository conversationRepository,
-        MessageRepository messageRepository)
+        MessageRepository messageRepository,
+        NetworkService networkService)
     {
         _database = database;
         _profileService = profileService;
+        _contactRepository = contactRepository;
         _conversationRepository = conversationRepository;
         _messageRepository = messageRepository;
+        _networkService = networkService;
 
         _navRail = new NavRailViewModel(_profileService);
-        _chatList = new ChatListViewModel(_conversationRepository, _messageRepository, _profileService);
+        _chatList = new ChatListViewModel(_conversationRepository, _messageRepository, _contactRepository, _profileService, _networkService);
 
         ClearSelectionCommand = new RelayCommand(() =>
         {
@@ -69,8 +77,48 @@ public class MainViewModel : ObservableObject
 
         if (_chatList.SelectedChat != null)
         {
-            CurrentChat = new ChatViewModel(_chatList.SelectedChat, _messageRepository, _conversationRepository, _profileService);
+            CurrentChat = new ChatViewModel(_chatList.SelectedChat, _messageRepository, _conversationRepository, _contactRepository, _profileService, _networkService);
         }
+
+        RegisterNetworkEvents();
+    }
+
+    private void RegisterNetworkEvents()
+    {
+        _networkService.PeerPresenceChanged += (s, e) =>
+        {
+            Application.Current?.Dispatcher.Invoke(() =>
+            {
+                _chatList.UpdatePeerPresence(e.PeerUserId, e.IsOnline);
+                if (CurrentChat?.Chat.Id == e.PeerUserId)
+                {
+                    CurrentChat.Chat.IsOnline = e.IsOnline;
+                }
+            });
+        };
+
+        _networkService.MessageReceived += (s, e) =>
+        {
+            Application.Current?.Dispatcher.Invoke(() =>
+            {
+                var (peerId, msg) = e;
+
+                _chatList.HandleIncomingMessage(peerId, msg);
+
+                if (CurrentChat != null && CurrentChat.Chat.Id == peerId)
+                {
+                    CurrentChat.AddIncomingMessage(msg);
+                }
+            });
+        };
+
+        _networkService.MessageDelivered += (s, msgId) =>
+        {
+            Application.Current?.Dispatcher.Invoke(() =>
+            {
+                CurrentChat?.UpdateMessageStatus(msgId, "Delivered");
+            });
+        };
     }
 
     private void OnSelectedChatChanged(ChatItem? chat)
@@ -83,7 +131,7 @@ public class MainViewModel : ObservableObject
         {
             if (CurrentChat == null)
             {
-                CurrentChat = new ChatViewModel(chat, _messageRepository, _conversationRepository, _profileService);
+                CurrentChat = new ChatViewModel(chat, _messageRepository, _conversationRepository, _contactRepository, _profileService, _networkService);
             }
             else
             {
