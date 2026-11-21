@@ -8,12 +8,15 @@ public class ChatMessage : ObservableObject
     private string _text = string.Empty;
     private string _time = string.Empty;
     private bool _isOutgoing;
-    private string _status = "Read"; // "Sent", "Delivered", "Read"
+    private string _status = "Sent"; // "Pending", "Sent", "Delivered", "Read"
     private string _senderName = string.Empty;
     private string _senderColor = "#1F7AA3";
     private bool _isFirstInCluster = true;
     private string? _quotedAuthor;
     private string? _quotedText;
+    private string _dateSeparator = string.Empty;
+    private bool _showDateSeparator;
+    private DateTime _createdUtc = DateTime.UtcNow;
 
     public string Id
     {
@@ -82,4 +85,22 @@ public class ChatMessage : ObservableObject
     }
 
     public bool HasQuote => !string.IsNullOrWhiteSpace(_quotedText);
+
+    public string DateSeparator
+    {
+        get => _dateSeparator;
+        set => SetProperty(ref _dateSeparator, value);
+    }
+
+    public bool ShowDateSeparator
+    {
+        get => _showDateSeparator;
+        set => SetProperty(ref _showDateSeparator, value);
+    }
+
+    public DateTime CreatedUtc
+    {
+        get => _createdUtc;
+        set => SetProperty(ref _createdUtc, value);
+    }
 }

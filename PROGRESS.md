@@ -9,7 +9,7 @@ Légende : ⬜ à faire · 🟨 en cours · ✅ terminé et testé à la main
 | 0 | Design : thèmes clair/sombre, rail, 3 zones, bulles, données factices | Partie 2 §1–2 | ✅ |
 | 1 | Fondations : solution, projets, SQLite, profil, modèles | Partie 1 §21 | ✅ |
 | 2 | Réseau de base : UDP, TCP, handshake, chiffrement, présence | Partie 1 §4, §17 | ✅ |
-| 3 | UI principale : liste, messages texte, historique | Partie 1 §6–10 | ⬜ |
+| 3 | UI principale : liste, messages texte, historique | Partie 1 §6–10 | ✅ |
 | 4 | Accusés, « écrit… », non-lus, file hors-ligne | Partie 1 §9.3 | ⬜ |
 | 5 | Actions sur messages : répondre, modifier, supprimer, réactions, recherche | Partie 1 §9 | ⬜ |
 | 6 | Émojis, notifications, tray, sons, sourdine, épingle, archive, brouillons | Partie 1 §7, §10, §15 | ⬜ |
@@ -56,8 +56,16 @@ Phases 0 à 5, puis 7 et 9. Une démonstration solide de ces phases vaut mieux q
   - Couche d'orchestration `NetworkService` connectée à l'UI WPF, mettant à jour la présence (points verts) et relayant les messages et accusés réels chiffrés.
   - Suite de 16 tests unitaires xUnit validant le chiffrement, les trames, la poignée de main réseau et l'échange chiffré.
 
+- **Phase 3** :
+  - Formatage dynamique des horodatages selon les spécifications françaises de WhatsApp Desktop (HH:mm, Hier, jour de semaine, dd/MM/yyyy) et pastilles de séparateurs de dates ("AUJOURD'HUI", "HIER", date longue) dans `DateTimeFormatter.cs`.
+  - Intégration du sous-titre de contact temps réel ("en ligne", "vu aujourd’hui à HH:mm", "vu hier à HH:mm", "hors ligne").
+  - Tri dynamique des conversations : épinglées en tête, puis tri par date de dernier message décroissante.
+  - Fenêtre modale "Nouvelle discussion" (`NewChatWindow.xaml`) pour démarrer immédiatement une conversation avec un pair découvert sur le réseau local ou saisir une IP/Port.
+  - Défilement automatique vers le bas lors de l'arrivée ou de l'envoi de nouveaux messages (`ScrollToBottom()`).
+  - Ajout de 10 tests unitaires supplémentaires dans `DateTimeFormatterTests.cs` (26 tests xUnit au total, tous au vert).
+
 ## Résumé de la dernière phase
-(l'agent écrit ici 10 lignes d'explication simple de ce qui a été fait et où se trouve chaque partie, utile pour la présentation orale)
+La Phase 3 enrichit l'interface utilisateur principale avec un affichage des messages et des conversations conforme aux standards visuels de WhatsApp Desktop. Les horodatages dans la liste des discussions s'adaptent dynamiquement (heure, "Hier", jour de la semaine ou date complète) grâce à `DateTimeFormatter.cs` dans `WhatsLAN.Core`. Dans la vue de discussion (`ChatView.xaml`), les messages sont séparés par des pastilles de date flottantes automatiques marquant le premier message de chaque journée ("AUJOURD'HUI", "HIER", etc.). Le sous-titre sous le nom du contact affiche fidèlement son statut de présence ("en ligne", "vu aujourd'hui à ...", ou "hors ligne"). L'utilisateur peut démarrer une discussion via le bouton "+" qui ouvre une boîte de dialogue dédiée (`NewChatWindow.xaml`) listant les pairs LAN découverts et permettant l'ajout manuel. L'historique complet est restauré depuis la base SQLite au chargement de chaque fil, le compteur de non-lus est remis à zéro à l'ouverture, et le conteneur de messages défile automatiquement vers le bas à chaque nouveau message reçu ou envoyé.
 
 - Correction du masquage du placeholder de saisie pour empêcher la superposition avec le texte tapé par l'utilisateur.
 - Implémentation du service cryptographique `CryptoService.cs` avec AES-256-GCM et dérivation de clé HKDF-SHA256.

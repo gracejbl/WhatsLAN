@@ -1,10 +1,13 @@
 using System.Collections.ObjectModel;
+using System.Windows;
 using System.Windows.Input;
 using WhatsLAN.App.Models;
 using WhatsLAN.App.MVVM;
+using WhatsLAN.App.Views;
 using WhatsLAN.Core.Models;
 using WhatsLAN.Core.Services;
 using WhatsLAN.Core.Storage;
+using WhatsLAN.Core.Utils;
 
 namespace WhatsLAN.App.ViewModels;
 
@@ -95,7 +98,7 @@ public class ChatListViewModel : ObservableObject
             }
         });
 
-        NewChatCommand = new RelayCommand(CreateNewDirectChat);
+        NewChatCommand = new RelayCommand(OpenNewChatDialog);
 
         LoadConversationsFromDb();
     }
@@ -108,7 +111,7 @@ public class ChatListViewModel : ObservableObject
         FilterPills.Add(new FilterPill { Name = "Groupes ▾", IsSelected = false });
     }
 
-    public void LoadConversationsFromDb()
+    public void LoadConversationsFromDb(string? selectConversationId = null)
     {
         _allChats.Clear();
         Chats.Clear();
@@ -122,7 +125,12 @@ public class ChatListViewModel : ObservableObject
         }
 
         OnPropertyChanged(nameof(HasChats));
-        if (Chats.Count > 0 && SelectedChat == null)
+
+        if (!string.IsNullOrEmpty(selectConversationId))
+        {
+            SelectedChat = Chats.FirstOrDefault(c => c.Id == selectConversationId);
+        }
+        else if (Chats.Count > 0 && SelectedChat == null)
         {
             SelectedChat = Chats[0];
         }
@@ -135,7 +143,6 @@ public class ChatListViewModel : ObservableObject
 
         if (existing == null && contact != null)
         {
-            // Pair découvert via le broadcast UDP : l'ajouter dans la liste des conversations
             var conversation = _conversationRepository.GetById(peerUserId) ?? new Conversation
             {
                 Id = peerUserId,
@@ -151,6 +158,9 @@ public class ChatListViewModel : ObservableObject
 
             existing = MapToChatItem(conversation);
             existing.IsOnline = isOnline;
+            existing.LastSeenUtc = contact.LastSeenUtc;
+            existing.UpdateSubtitle();
+
             _allChats.Insert(0, existing);
             Chats.Insert(0, existing);
             OnPropertyChanged(nameof(HasChats));
@@ -168,6 +178,8 @@ public class ChatListViewModel : ObservableObject
             if (contact != null)
             {
                 existing.Name = contact.Name;
+                existing.LastSeenUtc = contact.LastSeenUtc;
+                existing.UpdateSubtitle();
             }
         }
     }
@@ -186,14 +198,14 @@ public class ChatListViewModel : ObservableObject
         if (existing != null)
         {
             existing.LastMessage = msg.Body;
-            existing.LastMessageTime = msg.CreatedUtc.ToLocalTime().ToString("HH:mm");
+            existing.LastMessageTime = DateTimeFormatter.FormatChatListTime(msg.CreatedUtc);
             existing.LastMessageStatus = "";
             if (SelectedChat?.Id != peerUserId)
             {
                 existing.UnreadCount += 1;
             }
 
-            // Remonter la discussion en haut de liste
+            // Remonter en haut de liste (§7.4)
             _allChats.Remove(existing);
             _allChats.Insert(0, existing);
 
@@ -205,54 +217,50 @@ public class ChatListViewModel : ObservableObject
     private ChatItem MapToChatItem(Conversation conv)
     {
         var lastMsg = string.IsNullOrEmpty(conv.LastMessageId) ? null : _messageRepository.GetByConversationId(conv.Id, 1).LastOrDefault();
-
         var contact = _contactRepository.GetById(conv.Id);
         var displayName = contact?.Name ?? conv.PeerUserId ?? "Contact";
         var initials = displayName.Length >= 2 ? displayName[..2].ToUpper() : displayName.ToUpper();
 
-        return new ChatItem
+        var timeToFormat = lastMsg?.CreatedUtc ?? conv.UpdatedUtc;
+        var formattedTime = DateTimeFormatter.FormatChatListTime(timeToFormat);
+
+        var isOnline = contact?.IsOnline ?? false;
+        var lastSeen = contact?.LastSeenUtc;
+
+        var chatItem = new ChatItem
         {
             Id = conv.Id,
             Name = displayName,
             AvatarInitial = initials,
             AvatarColor = "#00A884",
             LastMessage = lastMsg?.Body ?? "Discussion créée",
-            LastMessageTime = lastMsg?.CreatedUtc.ToLocalTime().ToString("HH:mm") ?? conv.UpdatedUtc.ToLocalTime().ToString("HH:mm"),
+            LastMessageTime = formattedTime,
             UnreadCount = conv.UnreadCount,
             IsPinned = conv.Pinned,
             IsMuted = conv.Muted,
             IsGroup = conv.Type == "group",
             LastMessageStatus = lastMsg?.Status ?? "",
-            IsOnline = contact?.IsOnline ?? false
+            IsOnline = isOnline,
+            LastSeenUtc = lastSeen
         };
+
+        chatItem.UpdateSubtitle();
+        return chatItem;
     }
 
-    private void CreateNewDirectChat()
+    private void OpenNewChatDialog()
     {
-        var convId = Guid.NewGuid().ToString();
-        var convNumber = _allChats.Count + 1;
-        var peerName = $"Contact {convNumber}";
-
-        var conversation = new Conversation
+        var vm = new NewChatViewModel(_contactRepository, _conversationRepository);
+        var win = new NewChatWindow(vm)
         {
-            Id = convId,
-            Type = "direct",
-            PeerUserId = peerName,
-            Pinned = false,
-            Muted = false,
-            Archived = false,
-            UnreadCount = 0,
-            UpdatedUtc = DateTime.UtcNow
+            Owner = Application.Current.MainWindow
         };
 
-        _conversationRepository.Save(conversation);
-
-        var chatItem = MapToChatItem(conversation);
-        _allChats.Insert(0, chatItem);
-        Chats.Insert(0, chatItem);
-
-        SelectedChat = chatItem;
-        OnPropertyChanged(nameof(HasChats));
+        var result = win.ShowDialog();
+        if (result == true && !string.IsNullOrEmpty(win.SelectedConversationId))
+        {
+            LoadConversationsFromDb(win.SelectedConversationId);
+        }
     }
 
     private void ApplyFilters()
@@ -281,6 +289,9 @@ public class ChatListViewModel : ObservableObject
                 query = query.Where(c => c.IsGroup);
             }
         }
+
+        // Tri : épinglées en premier, puis date récente (§7.4)
+        query = query.OrderByDescending(c => c.IsPinned);
 
         foreach (var chat in query)
         {

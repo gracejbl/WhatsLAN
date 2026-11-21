@@ -38,12 +38,10 @@
                                FontSize="16" FontWeight="SemiBold"
                                Foreground="{DynamicResource TextPrimary}"
                                TextTrimming="CharacterEllipsis"/>
-                    <TextBlock Text="en ligne"
+                    <TextBlock Text="{Binding Chat.Subtitle}"
                                FontSize="13" Foreground="{DynamicResource TextSecondary}"
-                               Visibility="{Binding Chat.IsOnline, Converter={StaticResource BoolToVisConverter}}"/>
-                    <TextBlock Text="hors ligne"
-                               FontSize="13" Foreground="{DynamicResource TextSecondary}"
-                               Visibility="{Binding Chat.IsOnline, Converter={StaticResource InverseBoolToVisConverter}}"/>
+                               TextTrimming="CharacterEllipsis"
+                               Visibility="{Binding Chat.Subtitle, Converter={StaticResource StringEmptyToVisibilityConverter}}"/>
                 </StackPanel>
 
                 <!-- Boutons d'action (Vidéo, Appel, Recherche, Menu) -->
@@ -90,7 +88,8 @@
         </Border>
 
         <!-- 2. Zone des messages -->
-        <ScrollViewer Grid.Row="1"
+        <ScrollViewer x:Name="MessagesScrollViewer"
+                      Grid.Row="1"
                       VerticalScrollBarVisibility="Auto"
                       HorizontalScrollBarVisibility="Disabled"
                       Padding="24,12">
@@ -110,20 +109,22 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Pastille de Date centrée -->
-                <Border HorizontalAlignment="Center"
-                        Background="{DynamicResource SystemPill}"
-                        CornerRadius="8" Padding="12,4" Margin="0,0,0,16">
-                    <TextBlock Text="AUJOURD'HUI"
-                               FontSize="11" FontWeight="SemiBold"
-                               Foreground="{DynamicResource SystemPillText}"/>
-                </Border>
-
                 <!-- Liste des bulles de messages -->
                 <ItemsControl ItemsSource="{Binding Messages}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Grid Margin="0,2,0,2">
+                            <StackPanel>
+                                <!-- Pastille de Date centrée (si premier message de la journée) -->
+                                <Border HorizontalAlignment="Center"
+                                        Background="{DynamicResource SystemPill}"
+                                        CornerRadius="8" Padding="12,4" Margin="0,8,0,8"
+                                        Visibility="{Binding ShowDateSeparator, Converter={StaticResource BoolToVisConverter}}">
+                                    <TextBlock Text="{Binding DateSeparator}"
+                                               FontSize="11" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource SystemPillText}"/>
+                                </Border>
+
+                                <Grid Margin="0,2,0,2">
                                 <Grid.Style>
                                     <Style TargetType="Grid">
                                         <!-- Espacement plus large entre expéditeurs différents -->
@@ -199,7 +200,8 @@
                                     </StackPanel>
                                 </Border>
                             </Grid>
-                        </DataTemplate>
+                        </StackPanel>
+                    </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </StackPanel>

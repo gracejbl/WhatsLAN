@@ -5,6 +5,7 @@ using WhatsLAN.App.MVVM;
 using WhatsLAN.Core.Models;
 using WhatsLAN.Core.Services;
 using WhatsLAN.Core.Storage;
+using WhatsLAN.Core.Utils;
 
 namespace WhatsLAN.App.ViewModels;
 
@@ -81,11 +82,18 @@ public class ChatViewModel : ObservableObject
         var dbMessages = _messageRepository.GetByConversationId(_chat.Id);
         var myUserId = _profileService.CurrentProfile?.UserId;
 
+        DateTime? prevDate = null;
+
         for (int i = 0; i < dbMessages.Count; i++)
         {
             var m = dbMessages[i];
             var isOut = m.SenderId == myUserId || m.SenderId == "me";
             var isFirstInCluster = i == 0 || (dbMessages[i - 1].SenderId != m.SenderId);
+
+            var msgLocalDate = m.CreatedUtc.ToLocalTime().Date;
+            var showSeparator = prevDate == null || prevDate.Value != msgLocalDate;
+            var separatorText = showSeparator ? DateTimeFormatter.FormatDateSeparator(m.CreatedUtc) : string.Empty;
+            prevDate = msgLocalDate;
 
             Messages.Add(new ChatMessage
             {
@@ -95,14 +103,33 @@ public class ChatViewModel : ObservableObject
                 IsOutgoing = isOut,
                 Status = m.Status,
                 IsFirstInCluster = isFirstInCluster,
-                SenderName = isOut ? "" : _chat.Name
+                SenderName = isOut ? "" : _chat.Name,
+                ShowDateSeparator = showSeparator,
+                DateSeparator = separatorText,
+                CreatedUtc = m.CreatedUtc
             });
+        }
+
+        // Remise à zéro des non-lus à l'ouverture de la discussion (§7.4, §9.3)
+        if (_chat.UnreadCount > 0)
+        {
+            _chat.UnreadCount = 0;
+            var conv = _conversationRepository.GetById(_chat.Id);
+            if (conv != null)
+            {
+                conv.UnreadCount = 0;
+                _conversationRepository.Save(conv);
+            }
         }
     }
 
     public void AddIncomingMessage(Message msg)
     {
         var isFirstInCluster = Messages.Count == 0 || Messages[^1].IsOutgoing;
+        var msgLocalDate = msg.CreatedUtc.ToLocalTime().Date;
+        var showSeparator = Messages.Count == 0 || Messages[^1].CreatedUtc.ToLocalTime().Date != msgLocalDate;
+        var separatorText = showSeparator ? DateTimeFormatter.FormatDateSeparator(msg.CreatedUtc) : string.Empty;
+
         Messages.Add(new ChatMessage
         {
             Id = msg.Id,
@@ -111,11 +138,14 @@ public class ChatViewModel : ObservableObject
             IsOutgoing = false,
             Status = "Delivered",
             IsFirstInCluster = isFirstInCluster,
-            SenderName = _chat.Name
+            SenderName = _chat.Name,
+            ShowDateSeparator = showSeparator,
+            DateSeparator = separatorText,
+            CreatedUtc = msg.CreatedUtc
         });
 
         Chat.LastMessage = msg.Body;
-        Chat.LastMessageTime = msg.CreatedUtc.ToLocalTime().ToString("HH:mm");
+        Chat.LastMessageTime = DateTimeFormatter.FormatChatListTime(msg.CreatedUtc);
         Chat.LastMessageStatus = "";
     }
 
@@ -146,6 +176,10 @@ public class ChatViewModel : ObservableObject
         var isPeerOnNetwork = _contactRepository.GetById(_chat.Id) != null;
 
         var isFirstInCluster = Messages.Count == 0 || !Messages[^1].IsOutgoing;
+        var msgLocalDate = now.ToLocalTime().Date;
+        var showSeparator = Messages.Count == 0 || Messages[^1].CreatedUtc.ToLocalTime().Date != msgLocalDate;
+        var separatorText = showSeparator ? DateTimeFormatter.FormatDateSeparator(now) : string.Empty;
+
         var uiMessage = new ChatMessage
         {
             Id = msgId,
@@ -153,17 +187,19 @@ public class ChatViewModel : ObservableObject
             Time = now.ToLocalTime().ToString("HH:mm"),
             IsOutgoing = true,
             Status = "Pending",
-            IsFirstInCluster = isFirstInCluster
+            IsFirstInCluster = isFirstInCluster,
+            ShowDateSeparator = showSeparator,
+            DateSeparator = separatorText,
+            CreatedUtc = now
         };
 
         Messages.Add(uiMessage);
         Chat.LastMessage = text;
-        Chat.LastMessageTime = uiMessage.Time;
+        Chat.LastMessageTime = DateTimeFormatter.FormatChatListTime(now);
         Chat.LastMessageStatus = "Pending";
 
         if (isPeerOnNetwork)
         {
-            // Envoi réel sur le réseau P2P chiffré via TCP
             var sent = await _networkService.SendTextMessageAsync(_chat.Id, _chat.Id, text);
             if (sent)
             {
@@ -173,7 +209,6 @@ public class ChatViewModel : ObservableObject
         }
         else
         {
-            // Message local si discussion manuelle sans pair réseau direct
             var dbMessage = new Message
             {
                 Id = msgId,

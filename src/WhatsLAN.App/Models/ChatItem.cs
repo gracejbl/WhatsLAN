@@ -1,4 +1,5 @@
 using WhatsLAN.App.MVVM;
+using WhatsLAN.Core.Utils;
 
 namespace WhatsLAN.App.Models;
 
@@ -18,6 +19,8 @@ public class ChatItem : ObservableObject
     private bool _isGroup;
     private string _lastMessageStatus = string.Empty; // "Read", "Delivered", "Sent", ""
     private bool _isSelected;
+    private string _subtitle = "hors ligne";
+    private DateTime? _lastSeenUtc;
 
     public string Id
     {
@@ -84,7 +87,36 @@ public class ChatItem : ObservableObject
     public bool IsOnline
     {
         get => _isOnline;
-        set => SetProperty(ref _isOnline, value);
+        set
+        {
+            if (SetProperty(ref _isOnline, value))
+            {
+                UpdateSubtitle();
+            }
+        }
+    }
+
+    public DateTime? LastSeenUtc
+    {
+        get => _lastSeenUtc;
+        set
+        {
+            if (SetProperty(ref _lastSeenUtc, value))
+            {
+                UpdateSubtitle();
+            }
+        }
+    }
+
+    public string Subtitle
+    {
+        get => _subtitle;
+        set => SetProperty(ref _subtitle, value);
+    }
+
+    public void UpdateSubtitle()
+    {
+        Subtitle = DateTimeFormatter.FormatLastSeen(_isOnline, _lastSeenUtc);
     }
 
     public bool HasUnseenStatus
