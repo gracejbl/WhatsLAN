@@ -99,9 +99,9 @@
             </Button>
 
             <!-- Avatar profil / paramètres -->
-            <Grid Width="40" Height="40" Cursor="Hand" ToolTip="Mon profil et paramètres">
+            <Grid Width="40" Height="40" Cursor="Hand" ToolTip="{Binding ProfileTooltip}">
                 <Ellipse Fill="{DynamicResource Accent}"/>
-                <TextBlock Text="WL" Foreground="#FFFFFF"
+                <TextBlock Text="{Binding UserInitials}" Foreground="#FFFFFF"
                            FontWeight="SemiBold" FontSize="14"
                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Grid>

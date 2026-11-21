@@ -22,10 +22,6 @@
                       UseAeroCaptionButtons="False"/>
     </WindowChrome.WindowChrome>
 
-    <Window.DataContext>
-        <viewmodels:MainViewModel/>
-    </Window.DataContext>
-
     <Grid Background="{DynamicResource AppBackground}">
         <Grid.RowDefinitions>
             <!-- 1. Barre de titre personnalisée (38px) -->

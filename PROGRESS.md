@@ -7,7 +7,7 @@ Légende : ⬜ à faire · 🟨 en cours · ✅ terminé et testé à la main
 | # | Phase | Source | État |
 |---|---|---|---|
 | 0 | Design : thèmes clair/sombre, rail, 3 zones, bulles, données factices | Partie 2 §1–2 | ✅ |
-| 1 | Fondations : solution, projets, SQLite, profil, modèles | Partie 1 §21 | ⬜ |
+| 1 | Fondations : solution, projets, SQLite, profil, modèles | Partie 1 §21 | ✅ |
 | 2 | Réseau de base : UDP, TCP, handshake, chiffrement, présence | Partie 1 §4, §17 | ⬜ |
 | 3 | UI principale : liste, messages texte, historique | Partie 1 §6–10 | ⬜ |
 | 4 | Accusés, « écrit… », non-lus, file hors-ligne | Partie 1 §9.3 | ⬜ |
@@ -46,16 +46,25 @@ Phases 0 à 5, puis 7 et 9. Une démonstration solide de ces phases vaut mieux q
   - Intégration d'un bouton de bascule de thème clair/sombre en direct sur le rail de navigation (icône soleil/lune) pour vérifier immédiatement les deux thèmes.
   - Données factices génériques strictement isolées dans `DesignTimeData.cs` conformément à la règle d'AGENTS.md.
 
+- **Phase 1** :
+  - Création de la bibliothèque `src/WhatsLAN.Core` (.NET 8) strictement découplée de toute dépendance WPF.
+  - Implémentation du stockage SQLite avec `Microsoft.Data.Sqlite` (`Database`, `ProfileRepository`, `ConversationRepository`, `MessageRepository`, `SettingsRepository`) en mode WAL.
+  - Cryptographie asymétrique ECDH NIST P-256 avec dérivation de secret partagé via `System.Security.Cryptography` (`KeyManager`).
+  - Écran de bienvenue `WelcomeWindow` pour la création d'identité au premier lancement (pseudo 1-25 car., statut, génération GUID et clés).
+  - Gestion des arguments `--data` et `--port` dans `App.xaml.cs` pour exécuter plusieurs instances indépendantes sur une même machine.
+  - Déconnexion complète de `DesignTimeData.cs` de l'exécution normale : l'application est alimentée exclusivement par SQLite.
+  - Projet de tests `src/WhatsLAN.Tests` créé avec 9 tests unitaires validant la crypto et les opérations SQLite, tous passés avec succès.
+
 ## Résumé de la dernière phase
 (l'agent écrit ici 10 lignes d'explication simple de ce qui a été fait et où se trouve chaque partie, utile pour la présentation orale)
 
-- Mise en place de la solution `WhatsLAN.sln` et du projet client WPF .NET 8 `src/WhatsLAN.App`.
-- Création de la barre de titre personnalisée sombre (38 px) avec logo WhatsLAN vectoriel et boutons Windows 11.
-- Implémentation du rail de navigation gauche (64 px) dans `Views/NavRailView.xaml` avec icônes outline, badges et sélecteur de thème.
-- Implémentation du panneau liste (400 px) dans `Views/ChatListView.xaml` avec recherche pilule, puces de filtres et items de conversation.
-- Implémentation de la zone centrale avec `Views/ChatView.xaml` (bulles reçues/envoyées, citations, accusés ✓✓ bleus, barre pilule flottante).
-- Implémentation de la vue d'état vide `Views/EmptyChatView.xaml` avec 4 actions rapides rondes et mention E2E.
-- Définition des palettes de couleurs dans `Themes/Dark.xaml` et `Themes/Light.xaml`, avec styles d'icônes et scrollbars fines.
-- Création du `ThemeManager` pour la permutation dynamique à chaud entre thème clair et sombre.
-- Isolation stricte des données factices génériques dans `DesignTimeData.cs` pour la validation de maquette.
-- Validation complète de la compilation sans aucun avertissement ni erreur via `dotnet build`.
+- Création du projet de logique métier `src/WhatsLAN.Core` et du projet de tests xUnit `src/WhatsLAN.Tests`.
+- Modélisation des entités clés dans `WhatsLAN.Core.Models` : `Profile`, `Contact`, `Conversation`, `Message`, `Attachment`, `Setting`.
+- Mise en place du moteur SQLite `Database.cs` avec pragmas WAL et création automatique de toutes les tables nécessaires.
+- Développement des dépôts SQLite pour profils, conversations, messages et paramètres système dans `WhatsLAN.Core.Storage`.
+- Développement du gestionnaire cryptographique `KeyManager.cs` générant les paires de clés ECDH P-256 et calculant le secret partagé.
+- Implémentation de `ProfileService.cs` pour la validation du pseudo, la persistance du compte et la gestion de l'identité locale.
+- Création de l'écran de premier lancement `WelcomeWindow.xaml` invitant l'utilisateur à créer son compte avant d'ouvrir la fenêtre principale.
+- Prise en charge des arguments CLI `--data` et `--port` dans `App.xaml.cs` permettant de tester plusieurs instances sur le même poste.
+- Raccordement des ViewModels à la base SQLite réelle et arrêt définitif de l'alimentation par données factices.
+- Écriture et exécution réussie de 9 tests unitaires xUnit couvrant les échanges de clés ECDH, l'accès base et la validation.

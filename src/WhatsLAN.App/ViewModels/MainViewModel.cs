@@ -1,11 +1,18 @@
 using System.Windows.Input;
 using WhatsLAN.App.Models;
 using WhatsLAN.App.MVVM;
+using WhatsLAN.Core.Services;
+using WhatsLAN.Core.Storage;
 
 namespace WhatsLAN.App.ViewModels;
 
 public class MainViewModel : ObservableObject
 {
+    private readonly Database _database;
+    private readonly ProfileService _profileService;
+    private readonly ConversationRepository _conversationRepository;
+    private readonly MessageRepository _messageRepository;
+
     private NavRailViewModel _navRail;
     private ChatListViewModel _chatList;
     private ChatViewModel? _currentChat;
@@ -38,10 +45,19 @@ public class MainViewModel : ObservableObject
 
     public ICommand ClearSelectionCommand { get; }
 
-    public MainViewModel()
+    public MainViewModel(
+        Database database,
+        ProfileService profileService,
+        ConversationRepository conversationRepository,
+        MessageRepository messageRepository)
     {
-        _navRail = new NavRailViewModel();
-        _chatList = new ChatListViewModel();
+        _database = database;
+        _profileService = profileService;
+        _conversationRepository = conversationRepository;
+        _messageRepository = messageRepository;
+
+        _navRail = new NavRailViewModel(_profileService);
+        _chatList = new ChatListViewModel(_conversationRepository, _messageRepository, _profileService);
 
         ClearSelectionCommand = new RelayCommand(() =>
         {
@@ -53,7 +69,7 @@ public class MainViewModel : ObservableObject
 
         if (_chatList.SelectedChat != null)
         {
-            CurrentChat = new ChatViewModel(_chatList.SelectedChat);
+            CurrentChat = new ChatViewModel(_chatList.SelectedChat, _messageRepository, _conversationRepository, _profileService);
         }
     }
 
@@ -67,7 +83,7 @@ public class MainViewModel : ObservableObject
         {
             if (CurrentChat == null)
             {
-                CurrentChat = new ChatViewModel(chat);
+                CurrentChat = new ChatViewModel(chat, _messageRepository, _conversationRepository, _profileService);
             }
             else
             {

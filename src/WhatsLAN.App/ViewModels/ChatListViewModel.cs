@@ -2,20 +2,28 @@ using System.Collections.ObjectModel;
 using System.Windows.Input;
 using WhatsLAN.App.Models;
 using WhatsLAN.App.MVVM;
+using WhatsLAN.Core.Models;
+using WhatsLAN.Core.Services;
+using WhatsLAN.Core.Storage;
 
 namespace WhatsLAN.App.ViewModels;
 
 public class ChatListViewModel : ObservableObject
 {
+    private readonly ConversationRepository _conversationRepository;
+    private readonly MessageRepository _messageRepository;
+    private readonly ProfileService _profileService;
     private string _searchText = string.Empty;
     private ChatItem? _selectedChat;
     private FilterPill? _selectedFilter;
     private readonly List<ChatItem> _allChats = [];
 
-    public ObservableCollection<FilterPill> FilterPills { get; }
+    public ObservableCollection<FilterPill> FilterPills { get; } = [];
     public ObservableCollection<ChatItem> Chats { get; } = [];
 
     public event Action<ChatItem?>? SelectedChatChanged;
+
+    public bool HasChats => Chats.Count > 0;
 
     public string SearchText
     {
@@ -60,9 +68,16 @@ public class ChatListViewModel : ObservableObject
     public ICommand SelectFilterCommand { get; }
     public ICommand NewChatCommand { get; }
 
-    public ChatListViewModel()
+    public ChatListViewModel(
+        ConversationRepository conversationRepository,
+        MessageRepository messageRepository,
+        ProfileService profileService)
     {
-        FilterPills = DesignTimeData.CreateFilterPills();
+        _conversationRepository = conversationRepository;
+        _messageRepository = messageRepository;
+        _profileService = profileService;
+
+        InitializeFilterPills();
         _selectedFilter = FilterPills.FirstOrDefault();
 
         SelectFilterCommand = new RelayCommand<FilterPill>(pill =>
@@ -73,22 +88,93 @@ public class ChatListViewModel : ObservableObject
             }
         });
 
-        NewChatCommand = new RelayCommand(() =>
-        {
-            // Placeholder for Phase 0 new chat button
-        });
+        NewChatCommand = new RelayCommand(CreateNewDirectChat);
 
-        var items = DesignTimeData.CreateChatItems();
-        foreach (var item in items)
+        LoadConversationsFromDb();
+    }
+
+    private void InitializeFilterPills()
+    {
+        FilterPills.Add(new FilterPill { Name = "Toutes", IsSelected = true });
+        FilterPills.Add(new FilterPill { Name = "Non lues", Count = 0, IsSelected = false });
+        FilterPills.Add(new FilterPill { Name = "Favoris", IsSelected = false });
+        FilterPills.Add(new FilterPill { Name = "Groupes ▾", IsSelected = false });
+    }
+
+    public void LoadConversationsFromDb()
+    {
+        _allChats.Clear();
+        Chats.Clear();
+
+        var dbConversations = _conversationRepository.GetAll();
+        foreach (var conv in dbConversations)
         {
-            _allChats.Add(item);
-            Chats.Add(item);
+            var chatItem = MapToChatItem(conv);
+            _allChats.Add(chatItem);
+            Chats.Add(chatItem);
         }
 
-        if (Chats.Count > 0)
+        OnPropertyChanged(nameof(HasChats));
+        if (Chats.Count > 0 && SelectedChat == null)
         {
             SelectedChat = Chats[0];
         }
+    }
+
+    private ChatItem MapToChatItem(Conversation conv)
+    {
+        // Récupérer le dernier message si existant
+        var lastMsg = string.IsNullOrEmpty(conv.LastMessageId) ? null : _messageRepository.GetByConversationId(conv.Id, 1).LastOrDefault();
+
+        var displayName = !string.IsNullOrEmpty(conv.PeerUserId)
+            ? conv.PeerUserId
+            : (conv.Type == "group" ? "Groupe" : "Discussion");
+
+        var initials = displayName.Length >= 2 ? displayName[..2].ToUpper() : displayName.ToUpper();
+
+        return new ChatItem
+        {
+            Id = conv.Id,
+            Name = displayName,
+            AvatarInitial = initials,
+            AvatarColor = "#00A884",
+            LastMessage = lastMsg?.Body ?? "Discussion créée",
+            LastMessageTime = lastMsg?.CreatedUtc.ToLocalTime().ToString("HH:mm") ?? conv.UpdatedUtc.ToLocalTime().ToString("HH:mm"),
+            UnreadCount = conv.UnreadCount,
+            IsPinned = conv.Pinned,
+            IsMuted = conv.Muted,
+            IsGroup = conv.Type == "group",
+            LastMessageStatus = lastMsg?.Status ?? ""
+        };
+    }
+
+    private void CreateNewDirectChat()
+    {
+        // Créer une nouvelle discussion dans la base SQLite locale
+        var convId = Guid.NewGuid().ToString();
+        var convNumber = _allChats.Count + 1;
+        var peerName = $"Contact {convNumber}";
+
+        var conversation = new Conversation
+        {
+            Id = convId,
+            Type = "direct",
+            PeerUserId = peerName,
+            Pinned = false,
+            Muted = false,
+            Archived = false,
+            UnreadCount = 0,
+            UpdatedUtc = DateTime.UtcNow
+        };
+
+        _conversationRepository.Save(conversation);
+
+        var chatItem = MapToChatItem(conversation);
+        _allChats.Insert(0, chatItem);
+        Chats.Insert(0, chatItem);
+
+        SelectedChat = chatItem;
+        OnPropertyChanged(nameof(HasChats));
     }
 
     private void ApplyFilters()
@@ -122,5 +208,7 @@ public class ChatListViewModel : ObservableObject
         {
             Chats.Add(chat);
         }
+
+        OnPropertyChanged(nameof(HasChats));
     }
 }

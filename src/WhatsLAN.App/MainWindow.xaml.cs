@@ -1,12 +1,14 @@
 ﻿using System.Windows;
+using WhatsLAN.App.ViewModels;
 
 namespace WhatsLAN.App;
 
 public partial class MainWindow : Window
 {
-    public MainWindow()
+    public MainWindow(MainViewModel viewModel)
     {
         InitializeComponent();
+        DataContext = viewModel;
     }
 
     private void MinimizeButton_Click(object sender, RoutedEventArgs e)

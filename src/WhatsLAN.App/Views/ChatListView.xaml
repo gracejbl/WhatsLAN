@@ -150,13 +150,26 @@
             </ItemsControl.ItemTemplate>
         </ItemsControl>
 
-        <!-- 4. Liste des conversations -->
-        <ListBox Grid.Row="3"
-                 ItemsSource="{Binding Chats}"
-                 SelectedItem="{Binding SelectedChat}"
-                 Background="Transparent" BorderThickness="0"
-                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                 ScrollViewer.VerticalScrollBarVisibility="Auto">
+        <!-- 4. Liste des conversations ou message si vide -->
+        <Grid Grid.Row="3">
+            <!-- Message si aucune discussion -->
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="24,0"
+                        Visibility="{Binding HasChats, Converter={StaticResource InverseBoolToVisConverter}}">
+                <TextBlock Text="Aucune discussion."
+                           FontSize="15" FontWeight="SemiBold"
+                           Foreground="{DynamicResource TextPrimary}"
+                           HorizontalAlignment="Center" Margin="0,0,0,6"/>
+                <TextBlock Text="Cliquez sur ➕ pour commencer."
+                           FontSize="13" Foreground="{DynamicResource TextSecondary}"
+                           HorizontalAlignment="Center"/>
+            </StackPanel>
+
+            <ListBox ItemsSource="{Binding Chats}"
+                     SelectedItem="{Binding SelectedChat}"
+                     Background="Transparent" BorderThickness="0"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                     Visibility="{Binding HasChats, Converter={StaticResource BoolToVisConverter}}">
             <ListBox.ItemContainerStyle>
                 <Style TargetType="ListBoxItem">
                     <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
@@ -296,4 +309,5 @@
             </ListBox.ItemTemplate>
         </ListBox>
     </Grid>
+</Grid>
 </UserControl>
