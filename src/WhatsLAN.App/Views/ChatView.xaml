@@ -6,9 +6,13 @@
         <Grid.RowDefinitions>
             <!-- 1. En-tête de la discussion -->
             <RowDefinition Height="60"/>
-            <!-- 2. Zone des messages avec défilement -->
+            <!-- 2. Barre de recherche contextuelle dans la discussion -->
+            <RowDefinition Height="Auto"/>
+            <!-- 3. Zone des messages avec défilement -->
             <RowDefinition Height="*"/>
-            <!-- 3. Barre de saisie flottante en pilule -->
+            <!-- 4. Bandeau de citation / modification -->
+            <RowDefinition Height="Auto"/>
+            <!-- 5. Barre de saisie flottante en pilule -->
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
@@ -32,7 +36,7 @@
                                HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Grid>
 
-                <!-- Titre et sous-titre -->
+                <!-- Titre et sous-titre (présence / écrit…) -->
                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                     <TextBlock Text="{Binding Chat.Name}"
                                FontSize="16" FontWeight="SemiBold"
@@ -99,9 +103,56 @@
             </Grid>
         </Border>
 
-        <!-- 2. Zone des messages -->
+        <!-- 2. Barre de recherche contextuelle dans la discussion -->
+        <Border Grid.Row="1" Background="{DynamicResource PanelBackground}"
+                BorderBrush="{DynamicResource Divider}" BorderThickness="0,0,0,1"
+                Padding="16,8"
+                Visibility="{Binding IsSearchOpen, Converter={StaticResource BoolToVisConverter}}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <Path Grid.Column="0" Width="16" Height="16" Stretch="Uniform"
+                      Data="{StaticResource IconSearch}" Fill="{DynamicResource TextSecondary}"
+                      VerticalAlignment="Center" Margin="0,0,8,0"/>
+
+                <TextBox Grid.Column="1"
+                         Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
+                         Background="Transparent" BorderThickness="0"
+                         Foreground="{DynamicResource TextPrimary}"
+                         CaretBrush="{DynamicResource Accent}"
+                         FontSize="14" VerticalContentAlignment="Center"/>
+
+                <TextBlock Grid.Column="2" Text="{Binding SearchSummary}"
+                           Foreground="{DynamicResource TextSecondary}"
+                           FontSize="12" VerticalAlignment="Center" Margin="8,0"/>
+
+                <Button Grid.Column="3" Command="{Binding PrevSearchCommand}"
+                        Style="{StaticResource IconButtonStyle}" Width="28" Height="28" ToolTip="Précédent">
+                    <Path Width="12" Height="12" Stretch="Uniform" Data="{StaticResource IconChevronUp}" Fill="{DynamicResource TextSecondary}"/>
+                </Button>
+
+                <Button Grid.Column="4" Command="{Binding NextSearchCommand}"
+                        Style="{StaticResource IconButtonStyle}" Width="28" Height="28" ToolTip="Suivant">
+                    <Path Width="12" Height="12" Stretch="Uniform" Data="{StaticResource IconChevronDown}" Fill="{DynamicResource TextSecondary}"/>
+                </Button>
+
+                <Button Grid.Column="5" Command="{Binding CloseSearchCommand}"
+                        Style="{StaticResource IconButtonStyle}" Width="28" Height="28" ToolTip="Fermer">
+                    <Path Width="12" Height="12" Stretch="Uniform" Data="{StaticResource IconClose}" Fill="{DynamicResource TextSecondary}"/>
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- 3. Zone des messages avec défilement -->
         <ScrollViewer x:Name="MessagesScrollViewer"
-                      Grid.Row="1"
+                      Grid.Row="2"
                       VerticalScrollBarVisibility="Auto"
                       HorizontalScrollBarVisibility="Disabled"
                       Padding="24,12">
@@ -137,90 +188,220 @@
                                 </Border>
 
                                 <Grid Margin="0,2,0,2">
-                                <Grid.Style>
-                                    <Style TargetType="Grid">
-                                        <!-- Espacement plus large entre expéditeurs différents -->
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsFirstInCluster}" Value="True">
-                                                <Setter Property="Margin" Value="0,8,0,2"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Grid.Style>
-
-                                <!-- Bulle de message -->
-                                <Border MinWidth="120" MaxWidth="520" CornerRadius="8" Padding="10,6,10,6">
-                                    <Border.Style>
-                                        <Style TargetType="Border">
-                                            <!-- Message Reçu (gauche) par défaut -->
-                                            <Setter Property="HorizontalAlignment" Value="Left"/>
-                                            <Setter Property="Background" Value="{DynamicResource BubbleIn}"/>
+                                    <Grid.Style>
+                                        <Style TargetType="Grid">
                                             <Style.Triggers>
-                                                <!-- Message Envoyé (droite) -->
-                                                <DataTrigger Binding="{Binding IsOutgoing}" Value="True">
-                                                    <Setter Property="HorizontalAlignment" Value="Right"/>
-                                                    <Setter Property="Background" Value="{DynamicResource BubbleOut}"/>
+                                                <DataTrigger Binding="{Binding IsFirstInCluster}" Value="True">
+                                                    <Setter Property="Margin" Value="0,8,0,2"/>
                                                 </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
-                                    </Border.Style>
+                                    </Grid.Style>
 
-                                    <StackPanel>
-                                        <!-- Bloc de citation / réponse si présent -->
-                                        <Border Background="{DynamicResource QuoteBackground}"
-                                                CornerRadius="4" Padding="8,4" Margin="0,0,0,6"
-                                                BorderThickness="4,0,0,0"
-                                                BorderBrush="{DynamicResource Accent}"
-                                                Visibility="{Binding HasQuote, Converter={StaticResource BoolToVisConverter}}">
-                                            <StackPanel>
-                                                <TextBlock Text="{Binding QuotedAuthor}"
-                                                           FontWeight="SemiBold" FontSize="12"
-                                                           Foreground="{DynamicResource Accent}"/>
-                                                <TextBlock Text="{Binding QuotedText}"
-                                                           FontSize="12" Foreground="{DynamicResource TextSecondary}"
-                                                           TextTrimming="CharacterEllipsis"/>
+                                    <!-- Bulle de message avec Menu Contextuel -->
+                                    <Border MinWidth="120" MaxWidth="540" CornerRadius="8" Padding="10,6,10,6">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="HorizontalAlignment" Value="Left"/>
+                                                <Setter Property="Background" Value="{DynamicResource BubbleIn}"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsOutgoing}" Value="True">
+                                                        <Setter Property="HorizontalAlignment" Value="Right"/>
+                                                        <Setter Property="Background" Value="{DynamicResource BubbleOut}"/>
+                                                    </DataTrigger>
+                                                    <!-- Surbrillance de saut / recherche -->
+                                                    <DataTrigger Binding="{Binding IsHighlighted}" Value="True">
+                                                        <Setter Property="Background" Value="#4DF1C40F"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+
+                                        <!-- Menu contextuel WhatsApp sur clic droit -->
+                                        <Border.ContextMenu>
+                                            <ContextMenu>
+                                                <!-- Réactions rapides 6 émojis (§9.4, §9.8) -->
+                                                <MenuItem Header="Réagir" StaysOpenOnClick="False">
+                                                    <MenuItem Header="👍 J'aime"
+                                                              Command="{Binding DataContext.ReactThumbCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                              CommandParameter="{Binding}"/>
+                                                    <MenuItem Header="❤️ Cœur"
+                                                              Command="{Binding DataContext.ReactHeartCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                              CommandParameter="{Binding}"/>
+                                                    <MenuItem Header="😂 Rire"
+                                                              Command="{Binding DataContext.ReactJoyCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                              CommandParameter="{Binding}"/>
+                                                    <MenuItem Header="😮 Waouh"
+                                                              Command="{Binding DataContext.ReactSurprisedCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                              CommandParameter="{Binding}"/>
+                                                    <MenuItem Header="😢 Triste"
+                                                              Command="{Binding DataContext.ReactSadCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                              CommandParameter="{Binding}"/>
+                                                    <MenuItem Header="🙏 Prière / Merci"
+                                                              Command="{Binding DataContext.ReactPrayCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                              CommandParameter="{Binding}"/>
+                                                </MenuItem>
+                                                <MenuItem Header="↩ Répondre"
+                                                          Command="{Binding DataContext.ReplyCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                          CommandParameter="{Binding}"/>
+                                                <MenuItem Header="✏ Modifier"
+                                                          Command="{Binding DataContext.StartEditCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                          CommandParameter="{Binding}"
+                                                          IsEnabled="{Binding CanEdit}"/>
+                                                <MenuItem Header="⭐ Étoiler / Favori"
+                                                          Command="{Binding DataContext.ToggleStarCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                          CommandParameter="{Binding}"/>
+                                                <MenuItem Header="📄 Copier le texte"
+                                                          Command="{Binding DataContext.CopyCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                          CommandParameter="{Binding}"/>
+                                                <Separator/>
+                                                <MenuItem Header="🗑 Supprimer pour moi"
+                                                          Command="{Binding DataContext.DeleteForMeCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                          CommandParameter="{Binding}"/>
+                                                <MenuItem Header="🗑 Supprimer pour tous"
+                                                          Command="{Binding DataContext.DeleteForEveryoneCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                          CommandParameter="{Binding}"
+                                                          IsEnabled="{Binding CanDeleteForEveryone}"
+                                                          Visibility="{Binding CanDeleteForEveryone, Converter={StaticResource BoolToVisConverter}}"/>
+                                            </ContextMenu>
+                                        </Border.ContextMenu>
+
+                                        <StackPanel>
+                                            <!-- Bloc de citation / réponse cliquable -->
+                                            <Border Background="{DynamicResource QuoteBackground}"
+                                                    CornerRadius="4" Padding="8,4" Margin="0,0,0,6"
+                                                    BorderThickness="4,0,0,0"
+                                                    BorderBrush="{DynamicResource Accent}"
+                                                    Cursor="Hand"
+                                                    Visibility="{Binding HasQuote, Converter={StaticResource BoolToVisConverter}}">
+                                                <Border.InputBindings>
+                                                    <MouseBinding MouseAction="LeftClick"
+                                                                  Command="{Binding DataContext.JumpToMessageCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                  CommandParameter="{Binding ReplyToId}"/>
+                                                </Border.InputBindings>
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding QuotedAuthor}"
+                                                               FontWeight="SemiBold" FontSize="12"
+                                                               Foreground="{DynamicResource Accent}"/>
+                                                    <TextBlock Text="{Binding QuotedText}"
+                                                               FontSize="12" Foreground="{DynamicResource TextSecondary}"
+                                                               TextTrimming="CharacterEllipsis"/>
+                                                </StackPanel>
+                                            </Border>
+
+                                            <!-- Nom d'expéditeur si groupe -->
+                                            <TextBlock Text="{Binding SenderName}"
+                                                       FontWeight="SemiBold" FontSize="13"
+                                                       Foreground="{DynamicResource Accent}"
+                                                       Margin="0,0,0,2"
+                                                       Visibility="{Binding SenderName, Converter={StaticResource NullOrEmptyToVisConverter}}"/>
+
+                                            <!-- Corps du texte du message -->
+                                            <TextBlock Text="{Binding Text}"
+                                                       FontSize="14.2"
+                                                       Foreground="{DynamicResource TextPrimary}"
+                                                       TextWrapping="Wrap"
+                                                       LineHeight="19">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsDeleted}" Value="True">
+                                                                <Setter Property="FontStyle" Value="Italic"/>
+                                                                <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+
+                                            <!-- Horodatage, étoile, mention modifié et coches -->
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="8,2,0,0">
+                                                <!-- Étoile si favori -->
+                                                <Path Width="11" Height="11" Stretch="Uniform" Margin="0,0,4,0" VerticalAlignment="Center"
+                                                      Data="{StaticResource IconStar}" Fill="{DynamicResource TextSecondary}"
+                                                      Visibility="{Binding IsStarred, Converter={StaticResource BoolToVisConverter}}"/>
+
+                                                <!-- Mention modifié -->
+                                                <TextBlock Text="modifié" FontStyle="Italic" FontSize="11"
+                                                           Foreground="{DynamicResource TextSecondary}"
+                                                           VerticalAlignment="Center" Margin="0,0,4,0"
+                                                           Visibility="{Binding IsEdited, Converter={StaticResource BoolToVisConverter}}"/>
+
+                                                <TextBlock Text="{Binding Time}"
+                                                           FontSize="11" Foreground="{DynamicResource TextSecondary}"
+                                                           VerticalAlignment="Center"/>
+
+                                                <!-- Accusé pour message sortant (⏱, ✓, ✓✓ gris, ✓✓ bleu, ⚠) -->
+                                                <Path Width="14" Height="14" Stretch="Uniform"
+                                                      Margin="4,0,0,0" VerticalAlignment="Center"
+                                                      Data="{Binding Status, Converter={StaticResource StatusToGeometryConverter}}"
+                                                      Fill="{Binding Status, Converter={StaticResource TicksColorConverter}}"
+                                                      Visibility="{Binding IsOutgoing, Converter={StaticResource BoolToVisConverter}}"/>
                                             </StackPanel>
-                                        </Border>
 
-                                        <!-- Nom d'expéditeur si groupe et message entrant -->
-                                        <TextBlock Text="{Binding SenderName}"
-                                                   FontWeight="SemiBold" FontSize="13"
-                                                   Foreground="{DynamicResource Accent}"
-                                                   Margin="0,0,0,2"
-                                                   Visibility="{Binding SenderName, Converter={StaticResource NullOrEmptyToVisConverter}}"/>
-
-                                        <!-- Corps du texte du message -->
-                                        <TextBlock Text="{Binding Text}"
-                                                   FontSize="14.2"
-                                                   Foreground="{DynamicResource TextPrimary}"
-                                                   TextWrapping="Wrap"
-                                                   LineHeight="19"/>
-
-                                        <!-- Horodatage et coches à droite -->
-                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="8,2,0,0">
-                                            <TextBlock Text="{Binding Time}"
-                                                       FontSize="11" Foreground="{DynamicResource TextSecondary}"
-                                                       VerticalAlignment="Center"/>
-
-                                            <!-- Accusé pour message sortant (⏱, ✓, ✓✓ gris, ✓✓ bleu, ⚠) -->
-                                            <Path Width="14" Height="14" Stretch="Uniform"
-                                                  Margin="4,0,0,0" VerticalAlignment="Center"
-                                                  Data="{Binding Status, Converter={StaticResource StatusToGeometryConverter}}"
-                                                  Fill="{Binding Status, Converter={StaticResource TicksColorConverter}}"
-                                                  Visibility="{Binding IsOutgoing, Converter={StaticResource BoolToVisConverter}}"/>
+                                            <!-- Pastille de réactions en bas de la bulle -->
+                                            <Border HorizontalAlignment="Left" Margin="0,4,0,0"
+                                                    Background="{DynamicResource PanelHeader}"
+                                                    CornerRadius="10" Padding="6,2"
+                                                    Visibility="{Binding HasReactions, Converter={StaticResource BoolToVisConverter}}">
+                                                <TextBlock Text="{Binding ReactionsSummary}" FontSize="12"/>
+                                            </Border>
                                         </StackPanel>
-                                    </StackPanel>
-                                </Border>
-                            </Grid>
-                        </StackPanel>
-                    </DataTemplate>
+                                    </Border>
+                                </Grid>
+                            </StackPanel>
+                        </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </StackPanel>
         </ScrollViewer>
 
-        <!-- 3. Barre de saisie flottante en pilule -->
-        <Border Grid.Row="2" Margin="16,0,16,16"
+        <!-- 4. Bandeau de citation / modification au-dessus de la saisie -->
+        <Border Grid.Row="3" Margin="16,0,16,6"
+                Background="{DynamicResource PanelBackground}"
+                CornerRadius="8" Padding="12,8"
+                BorderThickness="4,0,0,0" BorderBrush="{DynamicResource Accent}"
+                Visibility="{Binding HasQuotingMessage, Converter={StaticResource BoolToVisConverter}}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="{Binding QuotingAuthor}" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource Accent}"/>
+                    <TextBlock Text="{Binding QuotingText}" FontSize="13" Foreground="{DynamicResource TextSecondary}" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+                <Button Grid.Column="1" Command="{Binding CancelQuoteCommand}"
+                        Style="{StaticResource IconButtonStyle}" Width="28" Height="28">
+                    <Path Width="12" Height="12" Stretch="Uniform" Data="{StaticResource IconClose}" Fill="{DynamicResource TextSecondary}"/>
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- Bandeau de modification -->
+        <Border Grid.Row="3" Margin="16,0,16,6"
+                Background="{DynamicResource PanelBackground}"
+                CornerRadius="8" Padding="12,8"
+                BorderThickness="4,0,0,0" BorderBrush="{DynamicResource Accent}"
+                Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisConverter}}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="Modifier le message" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource Accent}"/>
+                    <TextBlock Text="Appuyez sur Entrée pour enregistrer les modifications." FontSize="12" Foreground="{DynamicResource TextSecondary}"/>
+                </StackPanel>
+                <Button Grid.Column="1" Command="{Binding CancelEditCommand}"
+                        Style="{StaticResource IconButtonStyle}" Width="28" Height="28">
+                    <Path Width="12" Height="12" Stretch="Uniform" Data="{StaticResource IconClose}" Fill="{DynamicResource TextSecondary}"/>
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- 5. Barre de saisie flottante en pilule -->
+        <Border Grid.Row="4" Margin="16,0,16,16"
                 Background="{DynamicResource InputField}"
                 CornerRadius="25" Height="50"
                 BorderThickness="1" BorderBrush="{DynamicResource Divider}">
@@ -259,6 +440,7 @@
                              FontSize="14" VerticalContentAlignment="Center">
                         <TextBox.InputBindings>
                             <KeyBinding Key="Enter" Command="{Binding SendMessageCommand}"/>
+                            <KeyBinding Key="Esc" Command="{Binding CancelEditCommand}"/>
                         </TextBox.InputBindings>
                     </TextBox>
 
@@ -270,7 +452,7 @@
                                Visibility="{Binding MessageText, Converter={StaticResource StringEmptyToVisConverter}}"/>
                 </Grid>
 
-                <!-- Bouton Micro ou Envoyer -->
+                <!-- Bouton Micro ou Envoyer / Enregistrer -->
                 <Button Grid.Column="3"
                         Command="{Binding SendMessageCommand}"
                         Width="36" Height="36"
@@ -284,6 +466,10 @@
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding CanSend}" Value="True">
                                         <Setter Property="Data" Value="{StaticResource IconSend}"/>
+                                        <Setter Property="Fill" Value="{DynamicResource Accent}"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsEditing}" Value="True">
+                                        <Setter Property="Data" Value="{StaticResource IconCheck}"/>
                                         <Setter Property="Fill" Value="{DynamicResource Accent}"/>
                                     </DataTrigger>
                                 </Style.Triggers>

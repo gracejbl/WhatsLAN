@@ -80,6 +80,7 @@ public partial class App : Application
         var convRepo = new ConversationRepository(_database);
         var msgRepo = new MessageRepository(_database);
         var settingsRepo = new SettingsRepository(_database);
+        var reactionRepo = new ReactionRepository(_database);
         var profileService = new ProfileService(profileRepo);
 
         // 4. Premier lancement si aucun profil enregistré
@@ -107,7 +108,8 @@ public partial class App : Application
             customPort,
             contactRepo,
             convRepo,
-            msgRepo);
+            msgRepo,
+            reactionRepo);
 
         _networkService.Start();
         AppLogger.Log("NetworkService démarré avec succès.");

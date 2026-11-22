@@ -16,6 +16,7 @@ public class MainViewModel : ObservableObject
     private readonly ConversationRepository _conversationRepository;
     private readonly MessageRepository _messageRepository;
     private readonly NetworkService _networkService;
+    private readonly ReactionRepository _reactionRepository;
 
     private NavRailViewModel _navRail;
     private ChatListViewModel _chatList;
@@ -63,6 +64,7 @@ public class MainViewModel : ObservableObject
         _conversationRepository = conversationRepository;
         _messageRepository = messageRepository;
         _networkService = networkService;
+        _reactionRepository = new ReactionRepository(_database);
 
         _navRail = new NavRailViewModel(_profileService);
         _chatList = new ChatListViewModel(_conversationRepository, _messageRepository, _contactRepository, _profileService, _networkService);
@@ -77,7 +79,7 @@ public class MainViewModel : ObservableObject
 
         if (_chatList.SelectedChat != null)
         {
-            CurrentChat = new ChatViewModel(_chatList.SelectedChat, _messageRepository, _conversationRepository, _contactRepository, _profileService, _networkService);
+            CurrentChat = new ChatViewModel(_chatList.SelectedChat, _messageRepository, _conversationRepository, _contactRepository, _profileService, _networkService, _reactionRepository);
         }
 
         RegisterNetworkEvents();
@@ -156,6 +158,33 @@ public class MainViewModel : ObservableObject
                 }
             });
         };
+
+        _networkService.MessageEdited += (s, e) =>
+        {
+            Application.Current?.Dispatcher.Invoke(() =>
+            {
+                var (msgId, newText, editedUtc) = e;
+                CurrentChat?.HandleMessageEdited(msgId, newText, editedUtc);
+            });
+        };
+
+        _networkService.MessageDeleted += (s, e) =>
+        {
+            Application.Current?.Dispatcher.Invoke(() =>
+            {
+                var (msgId, mode) = e;
+                CurrentChat?.HandleMessageDeleted(msgId, mode);
+            });
+        };
+
+        _networkService.ReactionChanged += (s, e) =>
+        {
+            Application.Current?.Dispatcher.Invoke(() =>
+            {
+                var (msgId, userId, emoji) = e;
+                CurrentChat?.HandleReactionChanged(msgId, userId, emoji);
+            });
+        };
     }
 
     private void OnSelectedChatChanged(ChatItem? chat)
@@ -168,7 +197,7 @@ public class MainViewModel : ObservableObject
         {
             if (CurrentChat == null)
             {
-                CurrentChat = new ChatViewModel(chat, _messageRepository, _conversationRepository, _contactRepository, _profileService, _networkService);
+                CurrentChat = new ChatViewModel(chat, _messageRepository, _conversationRepository, _contactRepository, _profileService, _networkService, _reactionRepository);
             }
             else
             {

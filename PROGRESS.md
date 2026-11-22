@@ -11,7 +11,7 @@ Légende : ⬜ à faire · 🟨 en cours · ✅ terminé et testé à la main
 | 2 | Réseau de base : UDP, TCP, handshake, chiffrement, présence | Partie 1 §4, §17 | ✅ |
 | 3 | UI principale : liste, messages texte, historique | Partie 1 §6–10 | ✅ |
 | 4 | Accusés, « écrit… », non-lus, file hors-ligne | Partie 1 §9.3 | ✅ |
-| 5 | Actions sur messages : répondre, modifier, supprimer, réactions, recherche | Partie 1 §9 | ⬜ |
+| 5 | Actions sur messages : répondre, modifier, supprimer, réactions, recherche | Partie 1 §9 | ✅ |
 | 6 | Émojis, notifications, tray, sons, sourdine, épingle, archive, brouillons | Partie 1 §7, §10, §15 | ⬜ |
 | 7 | Fichiers : aperçu, transfert par morceaux, visionneuse | Partie 1 §11 | ⬜ |
 | 8 | Messages vocaux | Partie 1 §12 | ⬜ |
@@ -72,5 +72,14 @@ Phases 0 à 5, puis 7 et 9. Une démonstration solide de ces phases vaut mieux q
   - File d'attente hors-ligne (Offline Queue, §4.5) : stockage automatique des messages en `Pending` lorsque le contact est inaccessible, et vidage/dépilement automatique ordonné dès sa reconnexion (`FlushPendingMessagesAsync`).
   - Ajout de 4 nouveaux tests unitaires xUnit dédiés (`ReceiptsAndTypingTests.cs`) portant le total de la suite de tests à 30 tests au vert.
 
+- **Phase 5** :
+  - Implémentation complète des paquets réseau `EditPacket`, `DeletePacket` et `ReactionPacket` avec routage et chiffrement de bout en bout dans `ConnectionManager.cs` et `NetworkService.cs`.
+  - Création du dépôt `ReactionRepository.cs` stockant les réactions par message et utilisateur dans SQLite, avec agrégation des 3 émojis les plus fréquents en pastille sous les bulles (`ReactionsSummary`).
+  - Menu contextuel complet par clic droit sur chaque bulle : réactions rapides 6 émojis (👍 ❤️ 😂 😮 😢 🙏), ↩ Répondre, ✏ Modifier, ⭐ Étoiler, 📄 Copier, 🗑 Supprimer (pour moi / pour tous).
+  - Bandeau de citation au-dessus du champ de saisie (`QuotingMessage`) et bloc de citation cliquable dans les bulles avec saut instantané au message d'origine et surbrillance jaune animée 2 secondes (`JumpToMessageCommand`).
+  - Règle stricte des 15 minutes pour la modification d'un message (`CanEdit`) et des 60 minutes pour la suppression pour tous (`CanDeleteForEveryone`), avec mention italique « modifié » et message d'effacement « 🚫 Vous avez supprimé ce message ».
+  - Barre de recherche contextuelle dans la discussion (`IsSearchOpen`) avec filtrage textuel, navigation précédent/suivant (▲ / ▼), compteur d'occurrences et surbrillance automatique.
+  - Ajout de 7 nouveaux tests unitaires xUnit dédiés dans `MessageActionsTests.cs` portant la suite à 37 tests (100 % passants).
+
 ## Résumé de la dernière phase
-La Phase 4 apporte le moteur complet d'accusés de réception, d'indicateur de frappe, de gestion des non-lus et de file d'attente hors-ligne de WhatsApp Desktop. Les messages passent fidèlement par les 4 étapes visuelles sous la bulle : horloge ⏱ en attente, coche simple ✓ envoyée sur le réseau, double coche grise ✓✓ remise au destinataire et double coche bleue ✓✓ dès que la discussion est ouverte et lue par le contact. Lorsque l'interlocuteur tape au clavier, un paquet chiffré `TYPING` est émis et fait apparaître la mention « écrit… » en vert dans le sous-titre et la liste des discussions. Les messages entrants non lus incrémentent le badge vert de la conversation et sont automatiquement acquittés en lecture (`ACK_READ`) dès l'ouverture du fil. Si un contact est hors-ligne ou injoignable, les messages restent stockés en `Pending` dans SQLite et sont automatiquement et séquentiellement dépilés et remis dès sa réapparition sur le réseau local.
+La Phase 5 enrichit l'expérience de messagerie avec toutes les actions interactives sur les messages conformes à WhatsApp Desktop. L'utilisateur peut citer un message en cliquant sur « Répondre » (un bandeau de citation apparaît au-dessus de la saisie, et le message envoyé intègre le bloc de citation qui permet de remonter au message source avec surbrillance jaune 2 secondes). Le clic droit sur une bulle donne accès à la barre des 6 réactions rapides (👍 ❤️ 😂 😮 😢 🙏) qui s'affichent en pastille ronde sous le message, à la modification (dans les 15 minutes avec mention « modifié »), à la suppression (locale ou pour tous dans les 60 minutes), à l'étoilement en favoris et à la copie dans le presse-papiers. Enfin, un panneau de recherche contextuelle dans la conversation permet de rechercher n'importe quel terme avec compteur dynamique (« 2 sur 5 »), boutons de navigation et surbrillance du message ciblé.

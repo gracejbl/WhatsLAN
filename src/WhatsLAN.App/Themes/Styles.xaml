@@ -59,6 +59,22 @@
     <Geometry x:Key="IconSun">M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41l-1.06-1.06zm1.06-10.96c.39-.39.39-1.03 0-1.41s-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06zM7.05 18.36c.39-.39.39-1.03 0-1.41s-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06z</Geometry>
     <Geometry x:Key="IconMoon">M12.3 2a10 10 0 0 0-.19 14 9.92 9.92 0 0 0 7.89 4 10.06 10.06 0 0 1-13.4-13.4A10 10 0 0 1 12.3 2z</Geometry>
 
+    <!-- Étoile / Favoris ⭐ -->
+    <Geometry x:Key="IconStar">M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z</Geometry>
+    <!-- Répondre / Reply ↩ -->
+    <Geometry x:Key="IconReply">M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z</Geometry>
+    <!-- Modifier / Edit ✏ -->
+    <Geometry x:Key="IconEdit">M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z</Geometry>
+    <!-- Supprimer / Delete 🗑 -->
+    <Geometry x:Key="IconDelete">M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z</Geometry>
+    <!-- Fermer / Annuler ✕ -->
+    <Geometry x:Key="IconClose">M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z</Geometry>
+    <!-- Flèches Haut/Bas pour recherche -->
+    <Geometry x:Key="IconChevronUp">M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z</Geometry>
+    <Geometry x:Key="IconChevronDown">M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z</Geometry>
+    <!-- Copier / Copy -->
+    <Geometry x:Key="IconCopy">M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z</Geometry>
+
     <!-- ScrollBar personnalisé ultra fin (6px) visible au survol -->
     <Style x:Key="ThinScrollThumb" TargetType="{x:Type Thumb}">
         <Setter Property="IsTabStop" Value="False"/>

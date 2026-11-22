@@ -17,6 +17,9 @@ public class ConnectionManager : IDisposable
     public event EventHandler<(string PeerUserId, AckDeliveredPacket Ack)>? AckReceived;
     public event EventHandler<(string PeerUserId, AckReadPacket Ack)>? AckReadReceived;
     public event EventHandler<(string PeerUserId, TypingPacket Typing)>? TypingReceived;
+    public event EventHandler<(string PeerUserId, EditPacket Edit)>? EditReceived;
+    public event EventHandler<(string PeerUserId, DeletePacket Delete)>? DeleteReceived;
+    public event EventHandler<(string PeerUserId, ReactionPacket Reaction)>? ReactionReceived;
     public event EventHandler<string>? PeerConnected;
     public event EventHandler<string>? PeerDisconnected;
 
@@ -189,6 +192,57 @@ public class ConnectionManager : IDisposable
         return false;
     }
 
+    public async Task<bool> SendEditAsync(string peerUserId, EditPacket edit)
+    {
+        if (_activeConnections.TryGetValue(peerUserId, out var connection) && connection.IsConnected)
+        {
+            try
+            {
+                await connection.SendJsonAsync(PacketType.Edit, edit);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+        return false;
+    }
+
+    public async Task<bool> SendDeleteAsync(string peerUserId, DeletePacket delete)
+    {
+        if (_activeConnections.TryGetValue(peerUserId, out var connection) && connection.IsConnected)
+        {
+            try
+            {
+                await connection.SendJsonAsync(PacketType.Delete, delete);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+        return false;
+    }
+
+    public async Task<bool> SendReactionAsync(string peerUserId, ReactionPacket reaction)
+    {
+        if (_activeConnections.TryGetValue(peerUserId, out var connection) && connection.IsConnected)
+        {
+            try
+            {
+                await connection.SendJsonAsync(PacketType.React, reaction);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+        return false;
+    }
+
     private void RegisterConnectionEvents(PeerConnection conn)
     {
         conn.PacketReceived += (s, e) =>
@@ -230,6 +284,33 @@ public class ConnectionManager : IDisposable
                 if (typing != null)
                 {
                     TypingReceived?.Invoke(this, (peerId, typing));
+                }
+            }
+            else if (e.Type == PacketType.Edit)
+            {
+                var json = Encoding.UTF8.GetString(e.Payload);
+                var edit = JsonSerializer.Deserialize<EditPacket>(json);
+                if (edit != null)
+                {
+                    EditReceived?.Invoke(this, (peerId, edit));
+                }
+            }
+            else if (e.Type == PacketType.Delete)
+            {
+                var json = Encoding.UTF8.GetString(e.Payload);
+                var delete = JsonSerializer.Deserialize<DeletePacket>(json);
+                if (delete != null)
+                {
+                    DeleteReceived?.Invoke(this, (peerId, delete));
+                }
+            }
+            else if (e.Type == PacketType.React)
+            {
+                var json = Encoding.UTF8.GetString(e.Payload);
+                var react = JsonSerializer.Deserialize<ReactionPacket>(json);
+                if (react != null)
+                {
+                    ReactionReceived?.Invoke(this, (peerId, react));
                 }
             }
         };

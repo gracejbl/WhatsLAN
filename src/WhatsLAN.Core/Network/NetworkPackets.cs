@@ -103,3 +103,33 @@ public class TypingPacket
     [JsonPropertyName("state")]
     public string State { get; set; } = "start"; // "start", "stop", "recording"
 }
+
+public class EditPacket
+{
+    [JsonPropertyName("messageId")]
+    public string MessageId { get; set; } = string.Empty;
+
+    [JsonPropertyName("newText")]
+    public string NewText { get; set; } = string.Empty;
+
+    [JsonPropertyName("editedAtUtc")]
+    public DateTime EditedAtUtc { get; set; } = DateTime.UtcNow;
+}
+
+public class DeletePacket
+{
+    [JsonPropertyName("messageId")]
+    public string MessageId { get; set; } = string.Empty;
+
+    [JsonPropertyName("mode")]
+    public string Mode { get; set; } = "forEveryone"; // "forEveryone" ou "forMe"
+}
+
+public class ReactionPacket
+{
+    [JsonPropertyName("messageId")]
+    public string MessageId { get; set; } = string.Empty;
+
+    [JsonPropertyName("emoji")]
+    public string Emoji { get; set; } = string.Empty; // Vide = retrait
+}

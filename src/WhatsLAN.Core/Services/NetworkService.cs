@@ -10,6 +10,7 @@ public class NetworkService : IDisposable
     private readonly ContactRepository _contactRepository;
     private readonly ConversationRepository _conversationRepository;
     private readonly MessageRepository _messageRepository;
+    private readonly ReactionRepository? _reactionRepository;
 
     private readonly DiscoveryService _discoveryService;
     private readonly ConnectionManager _connectionManager;
@@ -20,6 +21,9 @@ public class NetworkService : IDisposable
     public event EventHandler<(string MessageId, string Status)>? MessageStatusChanged;
     public event EventHandler<(string PeerUserId, List<string> MessageIds)>? MessagesRead;
     public event EventHandler<(string PeerUserId, string State)>? PeerTypingChanged;
+    public event EventHandler<(string MessageId, string NewText, DateTime EditedUtc)>? MessageEdited;
+    public event EventHandler<(string MessageId, string Mode)>? MessageDeleted;
+    public event EventHandler<(string MessageId, string UserId, string Emoji)>? ReactionChanged;
 
     public int TcpPort => _connectionManager.ListeningPort;
     public Profile MyProfile => _profile;
@@ -30,12 +34,14 @@ public class NetworkService : IDisposable
         ContactRepository contactRepository,
         ConversationRepository conversationRepository,
         MessageRepository messageRepository,
+        ReactionRepository? reactionRepository = null,
         int udpPort = DiscoveryService.DefaultDiscoveryPort)
     {
         _profile = profile;
         _contactRepository = contactRepository;
         _conversationRepository = conversationRepository;
         _messageRepository = messageRepository;
+        _reactionRepository = reactionRepository;
 
         _discoveryService = new DiscoveryService(_profile, tcpPort, udpPort);
         _connectionManager = new ConnectionManager(_profile, tcpPort);
@@ -197,6 +203,109 @@ public class NetworkService : IDisposable
             var (peerId, typing) = e;
             PeerTypingChanged?.Invoke(this, (peerId, typing.State));
         };
+
+        // Réception de modification de message (§4.4, §9.7)
+        _connectionManager.EditReceived += (s, e) =>
+        {
+            var (_, edit) = e;
+            _messageRepository.UpdateText(edit.MessageId, edit.NewText, edit.EditedAtUtc);
+            MessageEdited?.Invoke(this, (edit.MessageId, edit.NewText, edit.EditedAtUtc));
+        };
+
+        // Réception de suppression de message pour tous (§4.4, §9.6)
+        _connectionManager.DeleteReceived += (s, e) =>
+        {
+            var (_, delete) = e;
+            if (delete.Mode == "forEveryone")
+            {
+                _messageRepository.MarkDeleted(delete.MessageId);
+                MessageDeleted?.Invoke(this, (delete.MessageId, delete.Mode));
+            }
+        };
+
+        // Réception d'une réaction (§4.4, §9.8)
+        _connectionManager.ReactionReceived += (s, e) =>
+        {
+            var (peerId, react) = e;
+            _reactionRepository?.SetReaction(react.MessageId, peerId, react.Emoji);
+            ReactionChanged?.Invoke(this, (react.MessageId, peerId, react.Emoji));
+        };
+    }
+
+    public async Task<bool> SendEditMessageAsync(string peerUserId, string messageId, string newText)
+    {
+        var msg = _messageRepository.GetById(messageId);
+        if (msg == null) return false;
+
+        // Règle §9.7 : mes messages dans les 15 minutes
+        if (DateTime.UtcNow - msg.CreatedUtc > TimeSpan.FromMinutes(15))
+        {
+            return false;
+        }
+
+        var now = DateTime.UtcNow;
+        _messageRepository.UpdateText(messageId, newText, now);
+        MessageEdited?.Invoke(this, (messageId, newText, now));
+
+        var editPacket = new EditPacket
+        {
+            MessageId = messageId,
+            NewText = newText,
+            EditedAtUtc = now
+        };
+
+        return await _connectionManager.SendEditAsync(peerUserId, editPacket);
+    }
+
+    public async Task<bool> SendDeleteMessageAsync(string peerUserId, string messageId, bool forEveryone)
+    {
+        var msg = _messageRepository.GetById(messageId);
+        if (msg == null) return false;
+
+        if (forEveryone)
+        {
+            // Règle §9.6 : mes messages de moins de 60 minutes
+            if (DateTime.UtcNow - msg.CreatedUtc > TimeSpan.FromMinutes(60))
+            {
+                return false;
+            }
+
+            _messageRepository.MarkDeleted(messageId);
+            MessageDeleted?.Invoke(this, (messageId, "forEveryone"));
+
+            var delPacket = new DeletePacket
+            {
+                MessageId = messageId,
+                Mode = "forEveryone"
+            };
+
+            return await _connectionManager.SendDeleteAsync(peerUserId, delPacket);
+        }
+        else
+        {
+            _messageRepository.DeleteForMe(messageId);
+            MessageDeleted?.Invoke(this, (messageId, "forMe"));
+            return true;
+        }
+    }
+
+    public async Task<bool> SendReactionAsync(string peerUserId, string messageId, string emoji)
+    {
+        _reactionRepository?.SetReaction(messageId, _profile.UserId, emoji);
+        ReactionChanged?.Invoke(this, (messageId, _profile.UserId, emoji));
+
+        var reactPacket = new ReactionPacket
+        {
+            MessageId = messageId,
+            Emoji = emoji
+        };
+
+        return await _connectionManager.SendReactionAsync(peerUserId, reactPacket);
+    }
+
+    public bool ToggleStarred(string messageId)
+    {
+        return _messageRepository.ToggleStarred(messageId);
     }
 
     public async Task FlushPendingMessagesAsync(string peerUserId)
