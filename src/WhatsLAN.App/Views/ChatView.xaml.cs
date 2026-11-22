@@ -12,6 +12,13 @@ public partial class ChatView : UserControl
     {
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
+        EmojiPicker.EmojiSelected += emoji =>
+        {
+            if (DataContext is ChatViewModel vm)
+            {
+                vm.InsertEmoji(emoji);
+            }
+        };
     }
 
     private void OnDataContextChanged(object sender, System.Windows.DependencyPropertyChangedEventArgs e)

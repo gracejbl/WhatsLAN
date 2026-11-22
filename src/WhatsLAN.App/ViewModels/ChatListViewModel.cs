@@ -73,6 +73,11 @@ public class ChatListViewModel : ObservableObject
 
     public ICommand SelectFilterCommand { get; }
     public ICommand NewChatCommand { get; }
+    public ICommand TogglePinCommand { get; }
+    public ICommand ToggleMuteCommand { get; }
+    public ICommand ToggleArchiveCommand { get; }
+    public ICommand MarkAsUnreadCommand { get; }
+    public ICommand DeleteConversationCommand { get; }
 
     public ChatListViewModel(
         ConversationRepository conversationRepository,
@@ -99,6 +104,64 @@ public class ChatListViewModel : ObservableObject
         });
 
         NewChatCommand = new RelayCommand(OpenNewChatDialog);
+
+        TogglePinCommand = new RelayCommand<ChatItem>(chat =>
+        {
+            if (chat == null) return;
+            var newPinned = !chat.IsPinned;
+            if (_conversationRepository.SetPinned(chat.Id, newPinned))
+            {
+                chat.IsPinned = newPinned;
+                SortAndRefreshChats();
+            }
+            else
+            {
+                MessageBox.Show("Vous ne pouvez épingler que 3 discussions au maximum.", "WhatsLAN", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        });
+
+        ToggleMuteCommand = new RelayCommand<ChatItem>(chat =>
+        {
+            if (chat == null) return;
+            chat.IsMuted = !chat.IsMuted;
+            _conversationRepository.SetMuted(chat.Id, chat.IsMuted);
+        });
+
+        ToggleArchiveCommand = new RelayCommand<ChatItem>(chat =>
+        {
+            if (chat == null) return;
+            chat.IsArchived = !chat.IsArchived;
+            _conversationRepository.SetArchived(chat.Id, chat.IsArchived);
+            ApplyFilters();
+        });
+
+        MarkAsUnreadCommand = new RelayCommand<ChatItem>(chat =>
+        {
+            if (chat == null) return;
+            chat.UnreadCount = chat.UnreadCount == 0 ? 1 : 0;
+            var conv = _conversationRepository.GetById(chat.Id);
+            if (conv != null)
+            {
+                conv.UnreadCount = chat.UnreadCount;
+                _conversationRepository.Save(conv);
+            }
+            UpdateUnreadFilterCount();
+        });
+
+        DeleteConversationCommand = new RelayCommand<ChatItem>(chat =>
+        {
+            if (chat == null) return;
+            var confirm = MessageBox.Show($"Supprimer la discussion avec {chat.Name} ?", "Confirmer la suppression", MessageBoxButton.YesNo, MessageBoxImage.Question);
+            if (confirm == MessageBoxResult.Yes)
+            {
+                _allChats.Remove(chat);
+                Chats.Remove(chat);
+                if (SelectedChat == chat)
+                {
+                    SelectedChat = Chats.FirstOrDefault();
+                }
+            }
+        });
 
         LoadConversationsFromDb();
     }
@@ -253,14 +316,46 @@ public class ChatListViewModel : ObservableObject
         }
     }
 
+    public void UpdateDraft(string convId, string? draftText)
+    {
+        var existing = _allChats.FirstOrDefault(c => c.Id == convId);
+        if (existing != null)
+        {
+            existing.DraftText = string.IsNullOrWhiteSpace(draftText) ? null : draftText.Trim();
+        }
+        _conversationRepository.UpdateDraftText(convId, string.IsNullOrWhiteSpace(draftText) ? null : draftText.Trim());
+    }
+
     public void UpdateLastMessageStatus(string msgId, string status)
     {
-        foreach (var chat in _allChats)
+        var msg = _messageRepository.GetById(msgId);
+        if (msg == null) return;
+        var chat = _allChats.FirstOrDefault(c => c.Id == msg.ConversationId);
+        if (chat != null)
         {
-            if (chat.LastMessageStatus == "Pending" || chat.LastMessageStatus == "Sent" || chat.LastMessageStatus == "Delivered")
-            {
-                chat.LastMessageStatus = status;
-            }
+            chat.LastMessageStatus = status;
+        }
+    }
+
+    public void SortAndRefreshChats()
+    {
+        var pinned = _allChats.Where(c => c.IsPinned).ToList();
+        var unpinned = _allChats.Where(c => !c.IsPinned).ToList();
+
+        _allChats.Clear();
+        foreach (var c in pinned) _allChats.Add(c);
+        foreach (var c in unpinned) _allChats.Add(c);
+
+        ApplyFilters();
+        UpdateUnreadFilterCount();
+    }
+
+    private void UpdateUnreadFilterCount()
+    {
+        var unreadFilter = FilterPills.FirstOrDefault(f => f.Name.StartsWith("Non lues"));
+        if (unreadFilter != null)
+        {
+            unreadFilter.Count = _allChats.Count(c => c.UnreadCount > 0);
         }
     }
 
@@ -291,7 +386,9 @@ public class ChatListViewModel : ObservableObject
             IsGroup = conv.Type == "group",
             LastMessageStatus = lastMsg?.Status ?? "",
             IsOnline = isOnline,
-            LastSeenUtc = lastSeen
+            LastSeenUtc = lastSeen,
+            DraftText = conv.DraftText,
+            IsArchived = conv.Archived
         };
 
         chatItem.UpdateSubtitle();

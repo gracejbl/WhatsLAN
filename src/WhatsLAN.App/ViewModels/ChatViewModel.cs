@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Input;
 using WhatsLAN.App.Models;
 using WhatsLAN.App.MVVM;
+using WhatsLAN.App.Services;
 using WhatsLAN.Core.Models;
 using WhatsLAN.Core.Services;
 using WhatsLAN.Core.Storage;
@@ -51,11 +52,24 @@ public class ChatViewModel : ObservableObject
             {
                 OnPropertyChanged(nameof(CanSend));
                 HandleUserTyping();
+                if (!IsEditing)
+                {
+                    var draft = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+                    _chat.DraftText = draft;
+                    _conversationRepository.UpdateDraftText(_chat.Id, draft);
+                }
             }
         }
     }
 
     public bool CanSend => !string.IsNullOrWhiteSpace(_messageText);
+
+    private bool _isEmojiPickerOpen;
+    public bool IsEmojiPickerOpen
+    {
+        get => _isEmojiPickerOpen;
+        set => SetProperty(ref _isEmojiPickerOpen, value);
+    }
 
     public ChatMessage? QuotingMessage
     {
@@ -134,6 +148,7 @@ public class ChatViewModel : ObservableObject
     public ICommand PrevSearchCommand { get; }
     public ICommand AudioCallCommand { get; }
     public ICommand VideoCallCommand { get; }
+    public ICommand ToggleEmojiPickerCommand { get; }
 
     // Commandes contextuelles sur un message
     public ICommand ReplyCommand { get; }
@@ -183,6 +198,7 @@ public class ChatViewModel : ObservableObject
 
         AudioCallCommand = new RelayCommand(() => { });
         VideoCallCommand = new RelayCommand(() => { });
+        ToggleEmojiPickerCommand = new RelayCommand(() => IsEmojiPickerOpen = !IsEmojiPickerOpen);
 
         ReplyCommand = new RelayCommand<ChatMessage>(msg =>
         {
@@ -241,7 +257,13 @@ public class ChatViewModel : ObservableObject
 
         JumpToMessageCommand = new RelayCommand<string>(JumpToMessage);
 
+        _messageText = _chat.DraftText ?? string.Empty;
         LoadMessages();
+    }
+
+    public void InsertEmoji(string emoji)
+    {
+        MessageText = (MessageText ?? string.Empty) + emoji;
     }
 
     public void UpdateChat(ChatItem chat)
@@ -250,6 +272,10 @@ public class ChatViewModel : ObservableObject
         QuotingMessage = null;
         EditingMessage = null;
         IsSearchOpen = false;
+        IsEmojiPickerOpen = false;
+        _messageText = chat.DraftText ?? string.Empty;
+        OnPropertyChanged(nameof(MessageText));
+        OnPropertyChanged(nameof(CanSend));
         LoadMessages();
     }
 
@@ -408,6 +434,11 @@ public class ChatViewModel : ObservableObject
         Chat.LastMessageTime = DateTimeFormatter.FormatChatListTime(msg.CreatedUtc);
         Chat.LastMessageStatus = "";
 
+        if (!_chat.IsMuted)
+        {
+            SoundService.Instance.PlayMessageReceived();
+        }
+
         _ = _networkService.SendAckReadAsync(_chat.Id, _chat.Id, [msg.Id]);
     }
 
@@ -526,6 +557,9 @@ public class ChatViewModel : ObservableObject
         QuotingMessage = null;
         SendTypingStop();
         MessageText = string.Empty;
+        _chat.DraftText = null;
+        _conversationRepository.UpdateDraftText(_chat.Id, null);
+        SoundService.Instance.PlayMessageSent();
 
         var myUserId = _profileService.CurrentProfile?.UserId ?? "me";
         var msgId = Guid.NewGuid().ToString();

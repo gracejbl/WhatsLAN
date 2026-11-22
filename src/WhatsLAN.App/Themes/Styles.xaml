@@ -9,6 +9,10 @@
     <converters:NullOrEmptyToVisibilityConverter x:Key="NullOrEmptyToVisConverter"/>
     <converters:TicksColorConverter x:Key="TicksColorConverter"/>
     <converters:StatusToGeometryConverter x:Key="StatusToGeometryConverter"/>
+    <converters:BoolToPinTextConverter x:Key="BoolToPinTextConverter"/>
+    <converters:BoolToMuteTextConverter x:Key="BoolToMuteTextConverter"/>
+    <converters:BoolToArchiveTextConverter x:Key="BoolToArchiveTextConverter"/>
+    <converters:BoolToUnreadTextConverter x:Key="BoolToUnreadTextConverter"/>
 
     <!-- Icônes vectorielles standard -->
     <!-- Discussions / Chat Bubble -->

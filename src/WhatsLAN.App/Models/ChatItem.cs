@@ -14,6 +14,7 @@ public class ChatItem : ObservableObject
     private int _unreadCount;
     private bool _isPinned;
     private bool _isMuted;
+    private bool _isArchived;
     private bool _isOnline;
     private bool _hasUnseenStatus;
     private bool _isGroup;
@@ -22,6 +23,7 @@ public class ChatItem : ObservableObject
     private string _subtitle = "hors ligne";
     private DateTime? _lastSeenUtc;
     private bool _isTyping;
+    private string? _draftText;
 
     public string Id
     {
@@ -68,11 +70,38 @@ public class ChatItem : ObservableObject
             {
                 UpdateSubtitle();
                 OnPropertyChanged(nameof(DisplayLastMessage));
+                OnPropertyChanged(nameof(IsGreenPreview));
             }
         }
     }
 
-    public string DisplayLastMessage => _isTyping ? "écrit…" : _lastMessage;
+    public string? DraftText
+    {
+        get => _draftText;
+        set
+        {
+            if (SetProperty(ref _draftText, value))
+            {
+                OnPropertyChanged(nameof(HasDraft));
+                OnPropertyChanged(nameof(DisplayLastMessage));
+                OnPropertyChanged(nameof(IsGreenPreview));
+            }
+        }
+    }
+
+    public bool HasDraft => !string.IsNullOrWhiteSpace(_draftText);
+
+    public string DisplayLastMessage
+    {
+        get
+        {
+            if (_isTyping) return "écrit…";
+            if (!string.IsNullOrWhiteSpace(_draftText)) return $"Brouillon : {_draftText}";
+            return _lastMessage;
+        }
+    }
+
+    public bool IsGreenPreview => _isTyping || !string.IsNullOrWhiteSpace(_draftText);
 
     public string LastMessageTime
     {
@@ -104,6 +133,12 @@ public class ChatItem : ObservableObject
     {
         get => _isMuted;
         set => SetProperty(ref _isMuted, value);
+    }
+
+    public bool IsArchived
+    {
+        get => _isArchived;
+        set => SetProperty(ref _isArchived, value);
     }
 
     public bool IsOnline

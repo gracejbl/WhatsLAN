@@ -182,7 +182,29 @@
                             <ControlTemplate TargetType="ListBoxItem">
                                 <Border x:Name="itemBorder"
                                         Background="{TemplateBinding Background}"
-                                        CornerRadius="12" Padding="10,8">
+                                        CornerRadius="12" Padding="10,8"
+                                        Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                                    <Border.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Header="{Binding IsPinned, Converter={StaticResource BoolToPinTextConverter}}"
+                                                      Command="{Binding PlacementTarget.Tag.TogglePinCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                      CommandParameter="{Binding}"/>
+                                            <MenuItem Header="{Binding IsMuted, Converter={StaticResource BoolToMuteTextConverter}}"
+                                                      Command="{Binding PlacementTarget.Tag.ToggleMuteCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                      CommandParameter="{Binding}"/>
+                                            <MenuItem Header="{Binding IsArchived, Converter={StaticResource BoolToArchiveTextConverter}}"
+                                                      Command="{Binding PlacementTarget.Tag.ToggleArchiveCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                      CommandParameter="{Binding}"/>
+                                            <Separator/>
+                                            <MenuItem Header="{Binding HasUnread, Converter={StaticResource BoolToUnreadTextConverter}}"
+                                                      Command="{Binding PlacementTarget.Tag.MarkAsUnreadCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                      CommandParameter="{Binding}"/>
+                                            <Separator/>
+                                            <MenuItem Header="Supprimer la discussion"
+                                                      Command="{Binding PlacementTarget.Tag.DeleteConversationCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                      CommandParameter="{Binding}"/>
+                                        </ContextMenu>
+                                    </Border.ContextMenu>
                                     <ContentPresenter/>
                                 </Border>
                                 <ControlTemplate.Triggers>
@@ -278,7 +300,7 @@
                                             <Style TargetType="TextBlock">
                                                 <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
                                                 <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsTyping}" Value="True">
+                                                    <DataTrigger Binding="{Binding IsGreenPreview}" Value="True">
                                                         <Setter Property="Foreground" Value="{DynamicResource AccentLight}"/>
                                                         <Setter Property="FontStyle" Value="Italic"/>
                                                     </DataTrigger>

@@ -12,7 +12,7 @@ Légende : ⬜ à faire · 🟨 en cours · ✅ terminé et testé à la main
 | 3 | UI principale : liste, messages texte, historique | Partie 1 §6–10 | ✅ |
 | 4 | Accusés, « écrit… », non-lus, file hors-ligne | Partie 1 §9.3 | ✅ |
 | 5 | Actions sur messages : répondre, modifier, supprimer, réactions, recherche | Partie 1 §9 | ✅ |
-| 6 | Émojis, notifications, tray, sons, sourdine, épingle, archive, brouillons | Partie 1 §7, §10, §15 | ⬜ |
+| 6 | Émojis, notifications, tray, sons, sourdine, épingle, archive, brouillons | Partie 1 §7, §10, §15 | ✅ |
 | 7 | Fichiers : aperçu, transfert par morceaux, visionneuse | Partie 1 §11 | ⬜ |
 | 8 | Messages vocaux | Partie 1 §12 | ⬜ |
 | 9 | Groupes | Partie 1 §13 + Partie 3 §6 | ⬜ |
@@ -81,5 +81,20 @@ Phases 0 à 5, puis 7 et 9. Une démonstration solide de ces phases vaut mieux q
   - Barre de recherche contextuelle dans la discussion (`IsSearchOpen`) avec filtrage textuel, navigation précédent/suivant (▲ / ▼), compteur d'occurrences et surbrillance automatique.
   - Ajout de 7 nouveaux tests unitaires xUnit dédiés dans `MessageActionsTests.cs` portant la suite à 37 tests (100 % passants).
 
+- **Phase 6** :
+  - Gestion des statuts de conversation en SQLite : Épingle (Pin, limite stricte de 3 discussions max selon §7.4), Sourdine (Mute), Archivage (Archive) et Brouillons (Drafts) dans `ConversationRepository.cs`.
+  - Menu contextuel complet par clic droit sur chaque discussion dans `ChatListView` : Épingler / Désépingler, Sourdine / Réactiver notifications, Archiver / Désarchiver, Marquer comme non lu / lu, Supprimer la discussion.
+  - Gestion temps réel des brouillons : affichage immédiat en vert et italique « Brouillon : ... » dans la liste des discussions, persistance automatique à la saisie, chargement instantané à la sélection de la discussion et purge à l'envoi.
+  - Sélecteur d'émojis complet (`EmojiPickerControl`) : popup ancré au bouton 😊 de la barre de saisie, navigation par onglets de catégories (Smileys, Personnes, Animaux, Nourriture, Activités, Voyages, Objets, Symboles), recherche textuelle par mots-clés et onglet "Récents" (cache dédoublonné plafonné à 30 émojis).
+  - Synthétiseur sonore PCM WAV pur en mémoire (`SoundService`) sans fichier audio externe ni dépendance tierce : sons caractéristiques doux à l'envoi (chirp ascendant) et à la réception (pop), coupés lorsque la discussion est mise en sourdine.
+  - Intégration Windows Tray native (`NotifyIcon`) dans `MainWindow` : minimisation et fermeture vers la zone de notification avec infobulle, restauration en double-clic / clic gauche et menu contextuel (Ouvrir WhatsLAN, Quitter WhatsLAN).
+  - Compteur dynamique de non-lus dans la barre de titre : `(N) WhatsLAN` dès que `N > 0`, sinon `WhatsLAN`.
+  - Ajout de 5 tests unitaires xUnit dédiés dans `Phase6Tests.cs` validant brouillons, limite des 3 épingles, bascules sourdine/archive et moteur de recherche/récents d'émojis (42 tests au total, 100 % passants).
+
 ## Résumé de la dernière phase
-La Phase 5 enrichit l'expérience de messagerie avec toutes les actions interactives sur les messages conformes à WhatsApp Desktop. L'utilisateur peut citer un message en cliquant sur « Répondre » (un bandeau de citation apparaît au-dessus de la saisie, et le message envoyé intègre le bloc de citation qui permet de remonter au message source avec surbrillance jaune 2 secondes). Le clic droit sur une bulle donne accès à la barre des 6 réactions rapides (👍 ❤️ 😂 😮 😢 🙏) qui s'affichent en pastille ronde sous le message, à la modification (dans les 15 minutes avec mention « modifié »), à la suppression (locale ou pour tous dans les 60 minutes), à l'étoilement en favoris et à la copie dans le presse-papiers. Enfin, un panneau de recherche contextuelle dans la conversation permet de rechercher n'importe quel terme avec compteur dynamique (« 2 sur 5 »), boutons de navigation et surbrillance du message ciblé.
+La Phase 6 complète l'interface et l'expérience quotidienne de WhatsLAN conformément aux spécifications :
+1. Les discussions peuvent être épinglées en tête de liste (limite stricte de 3 discussions max), mises en sourdine, archivées ou marquées comme non lues via un menu contextuel par clic droit.
+2. Tout message commencé dans le champ de texte est instantanément sauvegardé comme brouillon dans SQLite et s'affiche sous forme de libellé vert « Brouillon : [texte] » dans la liste des conversations jusqu'à son envoi ou effacement.
+3. Le bouton émoji 😊 de la barre de saisie ouvre un sélecteur d'émojis complet avec onglets thématiques, recherche par mots-clés français et mémorisation des émojis récents.
+4. Des alertes sonores douces (synthèse WAV PCM 44,1 kHz) confirment les envois et les réceptions de messages (sauf conversations en sourdine).
+5. L'application s'intègre à la barre de tâches et au systray de Windows avec réduction/fermeture en zone de notification, restauration au clic et compteur global de messages non lus affiché dans la barre de titre `(N) WhatsLAN`.

@@ -6,7 +6,7 @@
         xmlns:views="clr-namespace:WhatsLAN.App.Views"
         xmlns:viewmodels="clr-namespace:WhatsLAN.App.ViewModels"
         mc:Ignorable="d"
-        Title="WhatsLAN"
+        Title="{Binding WindowTitle}"
         Height="780" Width="1180"
         MinHeight="600" MinWidth="900"
         WindowStartupLocation="CenterScreen"
@@ -48,7 +48,7 @@
                             <Ellipse Margin="230,278,0,0" Width="52" Height="52" Fill="{DynamicResource Accent}" HorizontalAlignment="Left" VerticalAlignment="Top"/>
                         </Grid>
                     </Viewbox>
-                    <TextBlock Text="WhatsLAN"
+                    <TextBlock Text="{Binding WindowTitle}"
                                FontSize="13" FontWeight="SemiBold"
                                Foreground="{DynamicResource TextPrimary}"
                                VerticalAlignment="Center"/>

@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Input;
 using WhatsLAN.App.Models;
 using WhatsLAN.App.MVVM;
+using WhatsLAN.App.Services;
 using WhatsLAN.Core.Models;
 using WhatsLAN.Core.Services;
 using WhatsLAN.Core.Storage;
@@ -48,6 +49,19 @@ public class MainViewModel : ObservableObject
 
     public bool HasSelectedChat => _currentChat != null;
 
+    private string _windowTitle = "WhatsLAN";
+    public string WindowTitle
+    {
+        get => _windowTitle;
+        set => SetProperty(ref _windowTitle, value);
+    }
+
+    public void UpdateWindowTitle()
+    {
+        var totalUnread = _chatList.Chats.Sum(c => c.UnreadCount);
+        WindowTitle = totalUnread > 0 ? $"({totalUnread}) WhatsLAN" : "WhatsLAN";
+    }
+
     public ICommand ClearSelectionCommand { get; }
 
     public MainViewModel(
@@ -82,6 +96,8 @@ public class MainViewModel : ObservableObject
             CurrentChat = new ChatViewModel(_chatList.SelectedChat, _messageRepository, _conversationRepository, _contactRepository, _profileService, _networkService, _reactionRepository);
         }
 
+        UpdateWindowTitle();
+
         RegisterNetworkEvents();
     }
 
@@ -111,6 +127,16 @@ public class MainViewModel : ObservableObject
                 {
                     CurrentChat.AddIncomingMessage(msg);
                 }
+                else
+                {
+                    var chat = _chatList.Chats.FirstOrDefault(c => c.Id == peerId);
+                    if (chat == null || !chat.IsMuted)
+                    {
+                        SoundService.Instance.PlayMessageReceived();
+                    }
+                }
+
+                UpdateWindowTitle();
             });
         };
 
@@ -204,5 +230,7 @@ public class MainViewModel : ObservableObject
                 CurrentChat.UpdateChat(chat);
             }
         }
+
+        UpdateWindowTitle();
     }
 }

@@ -100,4 +100,65 @@ public class ConversationRepository
 
         cmd.ExecuteNonQuery();
     }
+
+    public void UpdateDraftText(string convId, string? draftText)
+    {
+        using var conn = _database.CreateConnection();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "UPDATE Conversation SET draftText = @draft WHERE id = @id;";
+        cmd.Parameters.AddWithValue("@draft", (object?)draftText ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@id", convId);
+        cmd.ExecuteNonQuery();
+    }
+
+    public bool SetPinned(string convId, bool pinned)
+    {
+        using var conn = _database.CreateConnection();
+        if (pinned)
+        {
+            using var countCmd = conn.CreateCommand();
+            countCmd.CommandText = "SELECT COUNT(*) FROM Conversation WHERE pinned = 1;";
+            var count = Convert.ToInt32(countCmd.ExecuteScalar());
+            if (count >= 3)
+            {
+                // Maximum 3 épinglées (§7.4)
+                return false;
+            }
+        }
+
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "UPDATE Conversation SET pinned = @pinned WHERE id = @id;";
+        cmd.Parameters.AddWithValue("@pinned", pinned ? 1 : 0);
+        cmd.Parameters.AddWithValue("@id", convId);
+        cmd.ExecuteNonQuery();
+        return true;
+    }
+
+    public void SetMuted(string convId, bool muted)
+    {
+        using var conn = _database.CreateConnection();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "UPDATE Conversation SET muted = @muted WHERE id = @id;";
+        cmd.Parameters.AddWithValue("@muted", muted ? 1 : 0);
+        cmd.Parameters.AddWithValue("@id", convId);
+        cmd.ExecuteNonQuery();
+    }
+
+    public void SetArchived(string convId, bool archived)
+    {
+        using var conn = _database.CreateConnection();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "UPDATE Conversation SET archived = @archived WHERE id = @id;";
+        cmd.Parameters.AddWithValue("@archived", archived ? 1 : 0);
+        cmd.Parameters.AddWithValue("@id", convId);
+        cmd.ExecuteNonQuery();
+    }
+
+    public int GetPinnedCount()
+    {
+        using var conn = _database.CreateConnection();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT COUNT(*) FROM Conversation WHERE pinned = 1;";
+        return Convert.ToInt32(cmd.ExecuteScalar());
+    }
 }
